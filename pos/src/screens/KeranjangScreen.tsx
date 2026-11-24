@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { usePOS } from '../context/POSContext';
 import { Transaction } from '../types';
-import { PlusIcon, MinusIcon, TrashIcon, CheckIcon, CloseIcon } from '../components/Icons';
+import { PlusIcon, MinusIcon, TrashIcon, CheckIcon } from '../components/Icons';
 import { formatRupiah, formatDateTime, showPOSAlert } from '../utils/format';
 
 export const KeranjangScreen: React.FC = () => {
@@ -21,6 +21,7 @@ export const KeranjangScreen: React.FC = () => {
     removeFromCart,
     clearCart,
     checkout,
+    cartTotalQty,
     cartSubtotal,
     cartTax,
     cartGrandTotal,
@@ -28,7 +29,9 @@ export const KeranjangScreen: React.FC = () => {
   } = usePOS();
 
   const { width } = useWindowDimensions();
-  const isDesktop = width >= 768;
+  // Gunakan 2 kolom hanya jika layar cukup lebar (>= 1024px)
+  // Di bawah 1024px (Mobile & Tablet), gunakan 1 kolom vertikal agar tidak saling tumpang tindih
+  const isWideScreen = width >= 1024;
 
   const [customerName, setCustomerName] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'QRIS' | 'Debit/Kredit'>('Cash');
@@ -66,92 +69,91 @@ export const KeranjangScreen: React.FC = () => {
     setCustomerName('');
   };
 
-  return (
-    <View style={[styles.container, isDesktop ? styles.containerDesktop : styles.containerMobile]}>
-      {/* Items Section */}
-      <View style={styles.itemsSection}>
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Item Belanja</Text>
-            <Text style={styles.sectionSubtitle}>Daftar pesanan aktif</Text>
+  // Komponen Kartu Item Belanja
+  const renderCartItems = () => {
+    if (cart.length === 0) {
+      return (
+        <View style={styles.emptyCart}>
+          <View style={styles.emptyCartIcon}>
+            <TrashIcon size={32} color="#94a3b8" />
           </View>
-          {cart.length > 0 && (
-            <TouchableOpacity activeOpacity={0.7} onPress={clearCart}>
-              <Text style={styles.clearText}>Kosongkan</Text>
-            </TouchableOpacity>
-          )}
+          <Text style={styles.emptyTitle}>Keranjang Masih Kosong</Text>
+          <Text style={styles.emptySubtitle}>
+            Pilih produk dari menu Kasir untuk memasukkan pesanan.
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setActiveTab('kasir')}
+            style={styles.backToKasirBtn}
+          >
+            <Text style={styles.backToKasirText}>Buka Kasir</Text>
+          </TouchableOpacity>
         </View>
+      );
+    }
 
-        <ScrollView contentContainerStyle={styles.itemList}>
-          {cart.length === 0 ? (
-            <View style={styles.emptyCart}>
-              <View style={styles.emptyCartIcon}>
-                <TrashIcon size={32} color="#94a3b8" />
+    return (
+      <View style={styles.itemListWrapper}>
+        {cart.map((item) => (
+          <View key={item.product.id} style={styles.cartCard}>
+            {/* Baris Atas: Kategori & SKU + Tombol Hapus */}
+            <View style={styles.cartCardTop}>
+              <View style={styles.skuBadge}>
+                <Text style={styles.skuBadgeText}>
+                  {item.product.category} • {item.product.sku}
+                </Text>
               </View>
-              <Text style={styles.emptyTitle}>Keranjang Masih Kosong</Text>
-              <Text style={styles.emptySubtitle}>
-                Pilih menu di Kasir untuk memasukkan item ke keranjang.
-              </Text>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => setActiveTab('kasir')}
-                style={styles.backToKasirBtn}
+                onPress={() => removeFromCart(item.product.id)}
+                style={styles.deleteBtn}
               >
-                <Text style={styles.backToKasirText}>Buka Kasir</Text>
+                <TrashIcon size={16} color="#e11d48" />
               </TouchableOpacity>
             </View>
-          ) : (
-            cart.map((item) => (
-              <View key={item.product.id} style={styles.cartCard}>
-                <View style={styles.cartCardInfo}>
-                  <Text style={styles.cartItemCategory}>
-                    {item.product.category} • {item.product.sku}
-                  </Text>
-                  <Text style={styles.cartItemName}>{item.product.name}</Text>
-                  <Text style={styles.cartItemPrice}>{formatRupiah(item.product.price)}</Text>
-                </View>
 
-                {/* Controls */}
-                <View style={styles.cartCardControls}>
-                  <View style={styles.qtyBox}>
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => updateCartQty(item.product.id, -1)}
-                      style={styles.qtyBtn}
-                    >
-                      <MinusIcon size={14} color="#334155" />
-                    </TouchableOpacity>
-                    <Text style={styles.qtyNumber}>{item.quantity}</Text>
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => updateCartQty(item.product.id, 1)}
-                      style={styles.qtyBtn}
-                    >
-                      <PlusIcon size={14} color="#334155" />
-                    </TouchableOpacity>
-                  </View>
+            {/* Nama Produk & Harga Satuan */}
+            <Text style={styles.cartItemName}>{item.product.name}</Text>
+            <Text style={styles.cartItemPrice}>{formatRupiah(item.product.price)} / pcs</Text>
 
-                  <Text style={styles.itemSubtotal}>{formatRupiah(item.subtotal)}</Text>
-
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => removeFromCart(item.product.id)}
-                    style={styles.deleteBtn}
-                  >
-                    <TrashIcon size={18} color="#e11d48" />
-                  </TouchableOpacity>
-                </View>
+            {/* Baris Bawah: Kontrol Kuantitas & Subtotal */}
+            <View style={styles.cartCardBottom}>
+              <View style={styles.qtyBox}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => updateCartQty(item.product.id, -1)}
+                  style={styles.qtyBtn}
+                >
+                  <MinusIcon size={14} color="#334155" />
+                </TouchableOpacity>
+                <Text style={styles.qtyNumber}>{item.quantity}</Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => updateCartQty(item.product.id, 1)}
+                  style={styles.qtyBtn}
+                >
+                  <PlusIcon size={14} color="#334155" />
+                </TouchableOpacity>
               </View>
-            ))
-          )}
-        </ScrollView>
-      </View>
 
-      {/* Checkout Sidebar/Bottom */}
-      <ScrollView style={[styles.checkoutSection, isDesktop && styles.checkoutSectionDesktop]}>
+              <View style={styles.subtotalCol}>
+                <Text style={styles.subtotalLabel}>Subtotal</Text>
+                <Text style={styles.itemSubtotal}>{formatRupiah(item.subtotal)}</Text>
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  // Komponen Ringkasan Pembayaran
+  const renderCheckoutForm = () => {
+    return (
+      <View style={styles.checkoutCard}>
         <Text style={styles.checkoutTitle}>Ringkasan Pembayaran</Text>
 
-        {/* Customer Name */}
+        {/* Nama Pelanggan */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Nama Pelanggan (Opsional)</Text>
           <TextInput
@@ -163,7 +165,7 @@ export const KeranjangScreen: React.FC = () => {
           />
         </View>
 
-        {/* Payment Method */}
+        {/* Metode Pembayaran */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Metode Pembayaran</Text>
           <View style={styles.methodRow}>
@@ -185,7 +187,7 @@ export const KeranjangScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Cash Input */}
+        {/* Input Uang Tunai jika Cash */}
         {paymentMethod === 'Cash' && cart.length > 0 && (
           <View style={styles.cashBox}>
             <Text style={styles.cashLabel}>Nominal Uang Diterima</Text>
@@ -231,7 +233,7 @@ export const KeranjangScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Calculation */}
+        {/* Rincian Kalkulasi */}
         <View style={styles.calcContainer}>
           <View style={styles.calcRow}>
             <Text style={styles.calcLabel}>Subtotal</Text>
@@ -247,7 +249,7 @@ export const KeranjangScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Checkout Button */}
+        {/* Tombol Bayar */}
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={handleProcessCheckout}
@@ -257,9 +259,77 @@ export const KeranjangScreen: React.FC = () => {
           <CheckIcon size={18} color="#ffffff" />
           <Text style={styles.payBtnText}>Selesaikan Pembayaran</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
+    );
+  };
 
-      {/* Success Receipt Modal */}
+  return (
+    <View style={styles.container}>
+      {isWideScreen ? (
+        /* ================= TAMPILAN DESKTOP LEBAR (2 KOLOM SAMPING) ================= */
+        <View style={styles.desktopContainer}>
+          {/* Kolom Kiri: Item Belanja */}
+          <View style={styles.desktopLeftCol}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Item Belanja</Text>
+                <Text style={styles.sectionSubtitle}>
+                  {cartTotalQty > 0 ? `${cartTotalQty} item dalam pesanan` : 'Daftar pesanan aktif'}
+                </Text>
+              </View>
+              {cart.length > 0 && (
+                <TouchableOpacity activeOpacity={0.7} onPress={clearCart}>
+                  <Text style={styles.clearText}>Kosongkan</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView contentContainerStyle={styles.desktopItemScroll}>
+              {renderCartItems()}
+            </ScrollView>
+          </View>
+
+          {/* Kolom Kanan: Ringkasan Pembayaran */}
+          <ScrollView style={styles.desktopRightCol}>
+            {renderCheckoutForm()}
+          </ScrollView>
+        </View>
+      ) : (
+        /* ================= TAMPILAN MOBILE & TABLET (1 ALIRAN VERTIKAL BEBAS KORUPSI) ================= */
+        <ScrollView
+          style={styles.mobileScroll}
+          contentContainerStyle={styles.mobileScrollContent}
+        >
+          {/* Header Section */}
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Item Belanja</Text>
+              <Text style={styles.sectionSubtitle}>
+                {cartTotalQty > 0 ? `${cartTotalQty} item dalam pesanan` : 'Daftar pesanan aktif'}
+              </Text>
+            </View>
+            {cart.length > 0 && (
+              <TouchableOpacity activeOpacity={0.7} onPress={clearCart}>
+                <Text style={styles.clearText}>Kosongkan</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Daftar Item */}
+          <View style={styles.mobileItemsBlock}>
+            {renderCartItems()}
+          </View>
+
+          {/* Ringkasan Pembayaran berada tepat di bawah daftar item belanja */}
+          {cart.length > 0 && (
+            <View style={styles.mobileCheckoutBlock}>
+              {renderCheckoutForm()}
+            </View>
+          )}
+        </ScrollView>
+      )}
+
+      {/* Modal Struk Transaksi Sukses */}
       <Modal
         visible={!!completedTransaction}
         transparent
@@ -279,7 +349,7 @@ export const KeranjangScreen: React.FC = () => {
               </Text>
             </View>
 
-            {/* Item List */}
+            {/* List Item */}
             <ScrollView style={styles.receiptItemsScroll}>
               {completedTransaction?.items.map((item) => (
                 <View key={item.id} style={styles.receiptItemRow}>
@@ -291,7 +361,7 @@ export const KeranjangScreen: React.FC = () => {
               ))}
             </ScrollView>
 
-            {/* Financial Summary */}
+            {/* Total Finansial */}
             <View style={styles.receiptSummary}>
               <View style={styles.receiptRow}>
                 <Text style={styles.receiptSubtext}>Total Tagihan</Text>
@@ -309,7 +379,7 @@ export const KeranjangScreen: React.FC = () => {
               )}
             </View>
 
-            {/* Modal Actions */}
+            {/* Aksi Modal */}
             <View style={styles.modalActions}>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -344,19 +414,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8fafc',
   },
-  containerDesktop: {
+
+  /* Desktop layout (2 Kolom) */
+  desktopContainer: {
+    flex: 1,
     flexDirection: 'row',
   },
-  containerMobile: {
-    flexDirection: 'column',
-  },
-  itemsSection: {
+  desktopLeftCol: {
     flex: 1,
     borderRightWidth: 1,
     borderRightColor: '#e2e8f0',
   },
+  desktopItemScroll: {
+    padding: 16,
+  },
+  desktopRightCol: {
+    width: 380,
+    backgroundColor: '#ffffff',
+    padding: 16,
+  },
+
+  /* Mobile & Tablet layout (1 ScrollView Vertikal) */
+  mobileScroll: {
+    flex: 1,
+  },
+  mobileScrollContent: {
+    paddingBottom: 40,
+  },
+  mobileItemsBlock: {
+    padding: 12,
+  },
+  mobileCheckoutBlock: {
+    paddingHorizontal: 12,
+    marginTop: 8,
+  },
+
+  /* Header Bagian */
   sectionHeader: {
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#e2e8f0',
     backgroundColor: '#ffffff',
@@ -365,40 +461,141 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#0f172a',
   },
   sectionSubtitle: {
     fontSize: 11,
     color: '#64748b',
-    marginTop: 1,
+    marginTop: 2,
   },
   clearText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#e11d48',
   },
-  itemList: {
-    padding: 12,
-    gap: 8,
+
+  /* Daftar Item & Kartu Item */
+  itemListWrapper: {
+    gap: 10,
   },
-  emptyCart: {
-    padding: 30,
+  cartCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  cartCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  skuBadge: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  skuBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748b',
+    textTransform: 'uppercase',
+  },
+  deleteBtn: {
+    padding: 4,
+  },
+  cartItemName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+    lineHeight: 20,
+  },
+  cartItemPrice: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#059669',
+    marginTop: 2,
+    marginBottom: 12,
+  },
+  cartCardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    paddingTop: 10,
+  },
+  qtyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    padding: 3,
+  },
+  qtyBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  qtyNumber: {
+    width: 32,
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  subtotalCol: {
+    alignItems: 'flex-end',
+  },
+  subtotalLabel: {
+    fontSize: 10,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  itemSubtotal: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+
+  /* Empty Cart State */
+  emptyCart: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+    margin: 4,
   },
   emptyCartIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#f1f5f9',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
   emptyTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: '#334155',
   },
@@ -407,12 +604,12 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     marginTop: 4,
     textAlign: 'center',
-    maxWidth: 240,
+    maxWidth: 260,
   },
   backToKasirBtn: {
     marginTop: 16,
     backgroundColor: '#059669',
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 12,
   },
@@ -421,114 +618,51 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  cartCard: {
+
+  /* Form Checkout / Ringkasan */
+  checkoutCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cartCardInfo: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  cartItemCategory: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#94a3b8',
-    textTransform: 'uppercase',
-  },
-  cartItemName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0f172a',
-    marginTop: 2,
-  },
-  cartItemPrice: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#059669',
-    marginTop: 2,
-  },
-  cartCardControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  qtyBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    borderRadius: 10,
-    padding: 2,
-  },
-  qtyBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  qtyNumber: {
-    width: 28,
-    textAlign: 'center',
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  itemSubtotal: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0f172a',
-    minWidth: 70,
-    textAlign: 'right',
-  },
-  deleteBtn: {
-    padding: 4,
-  },
-  checkoutSection: {
-    padding: 16,
-    backgroundColor: '#ffffff',
-  },
-  checkoutSectionDesktop: {
-    width: 340,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
   checkoutTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#0f172a',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   inputGroup: {
-    marginBottom: 12,
+    marginBottom: 14,
   },
   inputLabel: {
     fontSize: 11,
     fontWeight: '600',
     color: '#475569',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   textInput: {
     borderWidth: 1,
     borderColor: '#e2e8f0',
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 12,
+    paddingVertical: 9,
+    fontSize: 13,
     color: '#0f172a',
     backgroundColor: '#f8fafc',
   },
   methodRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   methodBtn: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#e2e8f0',
@@ -540,7 +674,7 @@ const styles = StyleSheet.create({
     borderColor: '#059669',
   },
   methodBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: '#475569',
   },
@@ -551,26 +685,26 @@ const styles = StyleSheet.create({
   cashBox: {
     backgroundColor: '#f8fafc',
     borderRadius: 12,
-    padding: 10,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   cashLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: '#475569',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   cashInput: {
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderColor: '#cbd5e1',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 14,
-    fontWeight: '700',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    fontWeight: '800',
     color: '#0f172a',
   },
   quickCashRow: {
@@ -581,12 +715,12 @@ const styles = StyleSheet.create({
   quickCashBtn: {
     flex: 1,
     backgroundColor: '#e2e8f0',
-    paddingVertical: 4,
+    paddingVertical: 6,
     borderRadius: 6,
     alignItems: 'center',
   },
   quickCashText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: '#334155',
   },
@@ -594,26 +728,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
-    paddingTop: 6,
+    marginTop: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
   },
   changeLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#059669',
   },
   changeAmount: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '800',
     color: '#059669',
   },
   calcContainer: {
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
-    paddingTop: 10,
-    gap: 6,
+    paddingTop: 12,
+    gap: 8,
     marginBottom: 16,
   },
   calcRow: {
@@ -632,38 +766,39 @@ const styles = StyleSheet.create({
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: 6,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#e2e8f0',
   },
   totalLabel: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
     color: '#0f172a',
   },
   totalValue: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '800',
     color: '#059669',
   },
   payBtn: {
     backgroundColor: '#059669',
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 20,
   },
   payBtnDisabled: {
     backgroundColor: '#cbd5e1',
   },
   payBtnText: {
     color: '#ffffff',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
+
+  /* Modal Struk */
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.6)',
