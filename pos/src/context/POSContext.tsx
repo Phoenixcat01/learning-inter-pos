@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Product, CartItem, Transaction, Category, TabType } from '../types';
 import { INITIAL_PRODUCTS } from '../data/initialProducts';
-import { generateInvoiceNumber } from '../utils/format';
+import { generateInvoiceNumber, showPOSAlert } from '../utils/format';
 
 interface POSContextType {
   products: Product[];
@@ -95,7 +95,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Cart operations
   const addToCart = (product: Product) => {
     if (product.stock <= 0) {
-      alert('Stok produk habis!');
+      showPOSAlert('Stok Habis', 'Produk ini sedang tidak tersedia.');
       return;
     }
 
@@ -103,7 +103,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const existing = prevCart.find((item) => item.product.id === product.id);
       if (existing) {
         if (existing.quantity >= product.stock) {
-          alert(`Maksimal stok tercapai (${product.stock})`);
+          showPOSAlert('Batas Stok', `Maksimal stok tercapai (${product.stock})`);
           return prevCart;
         }
         return prevCart.map((item) =>
@@ -139,7 +139,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
 
       if (newQty > item.product.stock) {
-        alert(`Jumlah melebihi stok yang tersedia (${item.product.stock})`);
+        showPOSAlert('Batas Stok', `Jumlah melebihi stok yang tersedia (${item.product.stock})`);
         return prevCart;
       }
 

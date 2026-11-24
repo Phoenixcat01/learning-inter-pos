@@ -1,8 +1,19 @@
 import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  Modal,
+  StyleSheet,
+  Alert,
+  Platform,
+} from 'react-native';
 import { usePOS } from '../context/POSContext';
 import { Category, Product } from '../types';
 import { PlusIcon, EditIcon, TrashIcon, SearchIcon, CloseIcon } from '../components/Icons';
-import { formatRupiah } from '../utils/format';
+import { formatRupiah, showPOSAlert } from '../utils/format';
 
 const CATEGORIES: Category[] = ['Semua', 'Makanan', 'Minuman', 'Cemilan', 'Paket'];
 
@@ -45,11 +56,11 @@ export const ProdukScreen: React.FC = () => {
 
   const handleSave = () => {
     if (!formName.trim()) {
-      alert('Nama produk tidak boleh kosong!');
+      showPOSAlert('Validasi', 'Nama produk tidak boleh kosong!');
       return;
     }
     if (formPrice <= 0) {
-      alert('Harga produk harus lebih dari 0!');
+      showPOSAlert('Validasi', 'Harga produk harus lebih dari 0!');
       return;
     }
 
@@ -74,6 +85,40 @@ export const ProdukScreen: React.FC = () => {
     setIsModalOpen(false);
   };
 
+  const handleDelete = (p: Product) => {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm) {
+        if (window.confirm(`Hapus produk "${p.name}"?`)) {
+          deleteProduct(p.id);
+        }
+      } else {
+        deleteProduct(p.id);
+      }
+    } else {
+      Alert.alert('Konfirmasi Hapus', `Apakah Anda yakin ingin menghapus "${p.name}"?`, [
+        { text: 'Batal', style: 'cancel' },
+        { text: 'Hapus', style: 'destructive', onPress: () => deleteProduct(p.id) },
+      ]);
+    }
+  };
+
+  const handleReset = () => {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm) {
+        if (window.confirm('Kembalikan seluruh daftar produk ke data awal?')) {
+          resetProducts();
+        }
+      } else {
+        resetProducts();
+      }
+    } else {
+      Alert.alert('Reset Produk', 'Kembalikan seluruh daftar produk ke data bawaan?', [
+        { text: 'Batal', style: 'cancel' },
+        { text: 'Reset', style: 'destructive', onPress: resetProducts },
+      ]);
+    }
+  };
+
   const filteredProducts = products.filter((p) => {
     const matchCat = selectedCategory === 'Semua' || p.category === selectedCategory;
     const matchSearch =
@@ -83,232 +128,520 @@ export const ProdukScreen: React.FC = () => {
   });
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
+    <View style={styles.container}>
       {/* Header Controls */}
-      <div className="p-6 pb-2 space-y-4 shrink-0">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={openAddModal}
-              className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
-            >
-              <PlusIcon size={16} />
-              <span>Tambah Produk Baru</span>
-            </button>
-            <button
-              onClick={() => {
-                if (confirm('Kembalikan seluruh daftar produk ke data default bawaan?')) {
-                  resetProducts();
-                }
-              }}
-              className="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs transition-colors cursor-pointer"
-            >
-              Reset Default
-            </button>
-          </div>
+      <View style={styles.controlsSection}>
+        <View style={styles.topActions}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={openAddModal}
+            style={styles.addBtn}
+          >
+            <PlusIcon size={16} color="#ffffff" />
+            <Text style={styles.addBtnText}>Tambah Produk</Text>
+          </TouchableOpacity>
 
-          {/* Search Box */}
-          <div className="relative min-w-[260px]">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-              <SearchIcon size={16} />
-            </span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari nama atau SKU..."
-              className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
-            />
-          </div>
-        </div>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleReset}
+            style={styles.resetBtn}
+          >
+            <Text style={styles.resetBtnText}>Reset Default</Text>
+          </TouchableOpacity>
+        </View>
 
-        {/* Category Filter */}
-        <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                selectedCategory === cat
-                  ? 'bg-slate-800 text-white shadow-xs'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
+        {/* Search */}
+        <View style={styles.searchBox}>
+          <SearchIcon size={16} color="#94a3b8" />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Cari nama atau SKU..."
+            placeholderTextColor="#94a3b8"
+            style={styles.searchInput}
+          />
+        </View>
 
-      {/* Product Table */}
-      <div className="flex-1 overflow-y-auto p-6 pt-2">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold tracking-wider">
-              <tr>
-                <th className="py-3.5 px-4">SKU</th>
-                <th className="py-3.5 px-4">Nama Produk</th>
-                <th className="py-3.5 px-4">Kategori</th>
-                <th className="py-3.5 px-4 text-right">Harga</th>
-                <th className="py-3.5 px-4 text-center">Stok</th>
-                <th className="py-3.5 px-4 text-center">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredProducts.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="py-3 px-4 font-mono font-bold text-slate-500">{p.sku}</td>
-                  <td className="py-3 px-4 font-bold text-slate-800">
-                    {p.name}
-                    {p.description && (
-                      <span className="block text-[11px] font-normal text-slate-400 truncate max-w-xs">
-                        {p.description}
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600">
-                      {p.category}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right font-extrabold text-slate-900">
-                    {formatRupiah(p.price)}
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        p.stock <= 0
-                          ? 'bg-rose-100 text-rose-700'
-                          : p.stock <= 5
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-emerald-100 text-emerald-800'
-                      }`}
-                    >
-                      {p.stock} pcs
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-center">
-                    <div className="flex items-center justify-center space-x-2">
-                      <button
-                        onClick={() => openEditModal(p)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
-                        title="Edit Produk"
-                      >
-                        <EditIcon size={16} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Hapus produk "${p.name}"?`)) {
-                            deleteProduct(p.id);
-                          }
-                        }}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                        title="Hapus Produk"
-                      >
-                        <TrashIcon size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        {/* Categories */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+          {CATEGORIES.map((cat) => {
+            const isActive = selectedCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                activeOpacity={0.7}
+                onPress={() => setSelectedCategory(cat)}
+                style={[styles.categoryChip, isActive && styles.categoryChipActive]}
+              >
+                <Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Product List */}
+      <ScrollView contentContainerStyle={styles.listContent}>
+        {filteredProducts.map((p) => (
+          <View key={p.id} style={styles.productCard}>
+            <View style={styles.productCardLeft}>
+              <View style={styles.skuRow}>
+                <Text style={styles.skuText}>{p.sku}</Text>
+                <View style={styles.categoryPill}>
+                  <Text style={styles.categoryPillText}>{p.category}</Text>
+                </View>
+              </View>
+              <Text style={styles.productName}>{p.name}</Text>
+              {p.description ? (
+                <Text style={styles.productDesc} numberOfLines={1}>
+                  {p.description}
+                </Text>
+              ) : null}
+            </View>
+
+            <View style={styles.productCardRight}>
+              <Text style={styles.productPrice}>{formatRupiah(p.price)}</Text>
+              <View
+                style={[
+                  styles.stockBadge,
+                  p.stock <= 0
+                    ? styles.stockBadgeOut
+                    : p.stock <= 5
+                    ? styles.stockBadgeLow
+                    : styles.stockBadgeNormal,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.stockBadgeText,
+                    p.stock <= 0
+                      ? styles.stockTextOut
+                      : p.stock <= 5
+                      ? styles.stockTextLow
+                      : styles.stockTextNormal,
+                  ]}
+                >
+                  {p.stock} pcs
+                </Text>
+              </View>
+
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => openEditModal(p)}
+                  style={styles.actionBtn}
+                >
+                  <EditIcon size={16} color="#059669" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => handleDelete(p)}
+                  style={styles.actionBtn}
+                >
+                  <TrashIcon size={16} color="#e11d48" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        ))}
+      </ScrollView>
 
       {/* Add / Edit Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <h4 className="font-extrabold text-base text-slate-800">
+      <Modal
+        visible={isModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsModalOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
                 {editingProduct ? 'Edit Informasi Produk' : 'Tambah Produk Baru'}
-              </h4>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                <CloseIcon size={20} />
-              </button>
-            </div>
+              </Text>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setIsModalOpen(false)}>
+                <CloseIcon size={20} color="#64748b" />
+              </TouchableOpacity>
+            </View>
 
-            <div className="py-4 space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Nama Produk *</label>
-                <input
-                  type="text"
+            <ScrollView style={styles.modalFormScroll}>
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Nama Produk *</Text>
+                <TextInput
                   value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
+                  onChangeText={setFormName}
                   placeholder="Contoh: Es Kopi Susu Aren"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
+                  placeholderTextColor="#94a3b8"
+                  style={styles.formInput}
                 />
-              </div>
+              </View>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Kategori *</label>
-                <select
-                  value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value as Category)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 bg-white"
-                >
-                  {(['Makanan', 'Minuman', 'Cemilan', 'Paket'] as Category[]).map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Kategori</Text>
+                <View style={styles.categorySelectRow}>
+                  {(['Makanan', 'Minuman', 'Cemilan', 'Paket'] as Category[]).map((cat) => {
+                    const isSelected = formCategory === cat;
+                    return (
+                      <TouchableOpacity
+                        key={cat}
+                        activeOpacity={0.7}
+                        onPress={() => setFormCategory(cat)}
+                        style={[styles.catSelectBtn, isSelected && styles.catSelectBtnActive]}
+                      >
+                        <Text style={[styles.catSelectText, isSelected && styles.catSelectTextActive]}>
+                          {cat}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Harga (Rp) *</label>
-                  <input
-                    type="number"
-                    value={formPrice || ''}
-                    onChange={(e) => setFormPrice(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 font-bold"
+              <View style={styles.formRow}>
+                <View style={[styles.formGroup, { flex: 1 }]}>
+                  <Text style={styles.formLabel}>Harga (Rp) *</Text>
+                  <TextInput
+                    value={formPrice ? String(formPrice) : ''}
+                    onChangeText={(val) => setFormPrice(Number(val.replace(/[^0-9]/g, '')))}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor="#94a3b8"
+                    style={styles.formInput}
                   />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Stok Awal *</label>
-                  <input
-                    type="number"
-                    value={formStock || ''}
-                    onChange={(e) => setFormStock(Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 font-bold"
+                </View>
+                <View style={[styles.formGroup, { flex: 1 }]}>
+                  <Text style={styles.formLabel}>Stok Awal *</Text>
+                  <TextInput
+                    value={formStock ? String(formStock) : ''}
+                    onChangeText={(val) => setFormStock(Number(val.replace(/[^0-9]/g, '')))}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor="#94a3b8"
+                    style={styles.formInput}
                   />
-                </div>
-              </div>
+                </View>
+              </View>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Deskripsi Singkat</label>
-                <textarea
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Deskripsi Singkat</Text>
+                <TextInput
                   value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
+                  onChangeText={setFormDescription}
                   placeholder="Keterangan bahan atau catatan produk..."
-                  rows={2}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
+                  placeholderTextColor="#94a3b8"
+                  multiline
+                  numberOfLines={2}
+                  style={[styles.formInput, { height: 60, textAlignVertical: 'top' }]}
                 />
-              </div>
-            </div>
+              </View>
+            </ScrollView>
 
-            <div className="pt-3 border-t border-slate-200 flex space-x-2">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setIsModalOpen(false)}
+                style={styles.modalBtnCancel}
               >
-                Batal
-              </button>
-              <button
-                onClick={handleSave}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                <Text style={styles.modalBtnCancelText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handleSave}
+                style={styles.modalBtnSave}
               >
-                Simpan Produk
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+                <Text style={styles.modalBtnSaveText}>Simpan Produk</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  controlsSection: {
+    padding: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    gap: 10,
+  },
+  topActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#059669',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
+  },
+  addBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  resetBtn: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  resetBtnText: {
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    height: 38,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 12,
+    color: '#0f172a',
+  },
+  categoryScroll: {
+    gap: 6,
+  },
+  categoryChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f1f5f9',
+  },
+  categoryChipActive: {
+    backgroundColor: '#0f172a',
+  },
+  categoryChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  categoryChipTextActive: {
+    color: '#ffffff',
+  },
+  listContent: {
+    padding: 12,
+    gap: 8,
+  },
+  productCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  productCardLeft: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  skuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  skuText: {
+    fontSize: 10,
+    fontFamily: 'monospace',
+    color: '#64748b',
+  },
+  categoryPill: {
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  categoryPillText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#475569',
+    textTransform: 'uppercase',
+  },
+  productName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginTop: 4,
+  },
+  productDesc: {
+    fontSize: 10,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  productCardRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  productPrice: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  stockBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  stockBadgeNormal: {
+    backgroundColor: '#ecfdf5',
+  },
+  stockBadgeLow: {
+    backgroundColor: '#fef3c7',
+  },
+  stockBadgeOut: {
+    backgroundColor: '#ffe4e6',
+  },
+  stockBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  stockTextNormal: {
+    color: '#059669',
+  },
+  stockTextLow: {
+    color: '#d97706',
+  },
+  stockTextOut: {
+    color: '#e11d48',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  actionBtn: {
+    padding: 4,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    width: '100%',
+    maxWidth: 380,
+    padding: 20,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  modalFormScroll: {
+    paddingVertical: 12,
+  },
+  formGroup: {
+    marginBottom: 10,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  formLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 4,
+  },
+  formInput: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    fontSize: 12,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
+  },
+  categorySelectRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  catSelectBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc',
+  },
+  catSelectBtnActive: {
+    backgroundColor: '#059669',
+    borderColor: '#059669',
+  },
+  catSelectText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  catSelectTextActive: {
+    color: '#ffffff',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  modalBtnCancel: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  modalBtnCancelText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  modalBtnSave: {
+    flex: 1,
+    backgroundColor: '#059669',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  modalBtnSaveText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+});

@@ -1,81 +1,184 @@
 import React from 'react';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { MoreIcon } from '../components/Icons';
 
 export const LainnyaScreen: React.FC = () => {
   return (
-    <div className="flex-1 flex flex-col h-full overflow-y-auto p-8 bg-slate-50">
-      {/* Empty State / Placeholder Header */}
-      <div className="max-w-2xl mx-auto w-full text-center py-8">
-        <div className="w-20 h-20 rounded-3xl bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mx-auto mb-4 shadow-xs">
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.centerBox}>
+        <View style={styles.iconCircle}>
           <MoreIcon size={36} color="#64748b" />
-        </div>
-        <h3 className="text-xl font-bold text-slate-800">Menu Lainnya</h3>
-        <p className="text-xs text-slate-500 max-w-md mx-auto mt-2 leading-relaxed">
-          Menu ini sengaja disediakan sebagai placeholder/penampung fitur tambahan di masa mendatang sesuai perencanaan awal proyek.
-        </p>
+        </View>
+        <Text style={styles.title}>Menu Lainnya</Text>
+        <Text style={styles.subtitle}>
+          Menu ini disediakan sebagai placeholder modul tambahan untuk pengembangan sistem POS di masa mendatang.
+        </Text>
 
-        {/* Feature Placeholders */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 text-left">
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs opacity-75">
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wide">
-              Segera Hadir
-            </span>
-            <h4 className="font-bold text-slate-800 text-sm mt-2">Pengaturan Profil Toko</h4>
-            <p className="text-xs text-slate-400 mt-1">
-              Atur nama toko, alamat, logo struk, dan persentase pajak (PPN).
-            </p>
-          </div>
+        {/* Feature Cards */}
+        <View style={styles.grid}>
+          <View style={styles.card}>
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>SEGERA HADIR</Text>
+            </View>
+            <Text style={styles.cardTitle}>Pengaturan Toko</Text>
+            <Text style={styles.cardDesc}>
+              Atur nama toko, alamat, logo struk, dan persentase pajak PPN.
+            </Text>
+          </View>
 
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs opacity-75">
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wide">
-              Segera Hadir
-            </span>
-            <h4 className="font-bold text-slate-800 text-sm mt-2">Laporan & Analitik Penjualan</h4>
-            <p className="text-xs text-slate-400 mt-1">
-              Grafik penjualan harian/bulanan, produk terlaris, dan ekspor data ke Excel/CSV.
-            </p>
-          </div>
+          <View style={styles.card}>
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>SEGERA HADIR</Text>
+            </View>
+            <Text style={styles.cardTitle}>Laporan & Analitik</Text>
+            <Text style={styles.cardDesc}>
+              Grafik penjualan harian/bulanan dan ekspor data pembukuan.
+            </Text>
+          </View>
 
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs opacity-75">
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wide">
-              Segera Hadir
-            </span>
-            <h4 className="font-bold text-slate-800 text-sm mt-2">Integrasi Printer Kasir</h4>
-            <p className="text-xs text-slate-400 mt-1">
-              Hubungkan ke printer thermal 58mm / 80mm via Bluetooth atau USB.
-            </p>
-          </div>
+          <View style={styles.card}>
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>SEGERA HADIR</Text>
+            </View>
+            <Text style={styles.cardTitle}>Printer Kasir Thermal</Text>
+            <Text style={styles.cardDesc}>
+              Integrasi printer thermal 58mm / 80mm via Bluetooth atau USB.
+            </Text>
+          </View>
 
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs opacity-75">
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wide">
-              Segera Hadir
-            </span>
-            <h4 className="font-bold text-slate-800 text-sm mt-2">Manajemen Staf & Akses</h4>
-            <p className="text-xs text-slate-400 mt-1">
-              Kelola akun kasir, pergantian shift kasir (cash drawer count), dan hak akses.
-            </p>
-          </div>
-        </div>
+          <View style={styles.card}>
+            <View style={styles.tag}>
+              <Text style={styles.tagText}>SEGERA HADIR</Text>
+            </View>
+            <Text style={styles.cardTitle}>Manajemen Staf</Text>
+            <Text style={styles.cardDesc}>
+              Hak akses kasir, shift kerja, dan rekonsiliasi uang kas harian.
+            </Text>
+          </View>
+        </View>
 
-        {/* Technical Info Box */}
-        <div className="mt-8 p-4 rounded-2xl bg-white border border-slate-200 text-left">
-          <p className="text-xs font-bold text-slate-700">Informasi Teknis Aplikasi</p>
-          <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-500">
-            <div>
-              <span className="text-slate-400 block">Framework:</span> Expo SDK 58
-            </div>
-            <div>
-              <span className="text-slate-400 block">Engine:</span> React 19 Web
-            </div>
-            <div>
-              <span className="text-slate-400 block">Styling:</span> Tailwind CSS
-            </div>
-            <div>
-              <span className="text-slate-400 block">Target:</span> Static Web Bundle
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+        {/* Tech Info */}
+        <View style={styles.infoBox}>
+          <Text style={styles.infoTitle}>Informasi Teknis Aplikasi</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoKey}>Framework:</Text>
+            <Text style={styles.infoVal}>Expo SDK 58</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoKey}>Arsitektur:</Text>
+            <Text style={styles.infoVal}>Universal React Native (Web + Mobile)</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoKey}>Target:</Text>
+            <Text style={styles.infoVal}>Expo Go (Android/iOS) & Web Static</Text>
+          </View>
+        </View>
+      </View>
+    </ScrollView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  content: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  centerBox: {
+    width: '100%',
+    maxWidth: 500,
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 24,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  subtitle: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  grid: {
+    width: '100%',
+    gap: 10,
+    marginTop: 20,
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  tag: {
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  tagText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#d97706',
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  cardDesc: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  infoBox: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginTop: 16,
+    gap: 6,
+  },
+  infoTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 4,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  infoKey: {
+    fontSize: 11,
+    color: '#64748b',
+  },
+  infoVal: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+});

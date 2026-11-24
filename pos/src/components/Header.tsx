@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { usePOS } from '../context/POSContext';
 import { CartIcon } from './Icons';
 import { formatRupiah } from '../utils/format';
@@ -12,8 +13,7 @@ export const Header: React.FC = () => {
       const now = new Date();
       setCurrentDateTime(
         now.toLocaleDateString('id-ID', {
-          weekday: 'long',
-          year: 'numeric',
+          weekday: 'short',
           month: 'short',
           day: 'numeric',
           hour: '2-digit',
@@ -44,36 +44,98 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="h-18 bg-white border-b border-slate-200 px-8 flex items-center justify-between shrink-0 shadow-xs">
-      <div>
-        <h2 className="text-xl font-bold text-slate-800 tracking-tight">{getTabTitle()}</h2>
-        <p className="text-xs text-slate-500 font-medium">{currentDateTime || 'Memuat waktu...'}</p>
-      </div>
+    <View style={styles.header}>
+      <View>
+        <Text style={styles.title}>{getTabTitle()}</Text>
+        <Text style={styles.subtitle}>{currentDateTime || 'Memuat waktu...'}</Text>
+      </View>
 
-      <div className="flex items-center space-x-4">
-        {/* Quick Cart Pill */}
-        <button
-          onClick={() => setActiveTab('keranjang')}
-          className={`flex items-center space-x-3 px-4 py-2 rounded-xl transition-all border cursor-pointer ${
-            activeTab === 'keranjang'
-              ? 'bg-emerald-50 border-emerald-500 text-emerald-800'
-              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-          }`}
-        >
-          <div className="relative">
-            <CartIcon size={20} color={activeTab === 'keranjang' ? '#047857' : '#475569'} />
-            {cartTotalQty > 0 && (
-              <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                {cartTotalQty}
-              </span>
-            )}
-          </div>
-          <div className="text-left">
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-semibold">Total Keranjang</span>
-            <span className="text-sm font-bold text-slate-900">{formatRupiah(cartGrandTotal)}</span>
-          </div>
-        </button>
-      </div>
-    </header>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => setActiveTab('keranjang')}
+        style={[styles.cartPill, activeTab === 'keranjang' && styles.cartPillActive]}
+      >
+        <View style={styles.cartIconWrapper}>
+          <CartIcon size={20} color={activeTab === 'keranjang' ? '#047857' : '#334155'} />
+          {cartTotalQty > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{cartTotalQty}</Text>
+            </View>
+          )}
+        </View>
+        <View>
+          <Text style={styles.cartLabel}>TOTAL</Text>
+          <Text style={styles.cartAmount}>{formatRupiah(cartGrandTotal)}</Text>
+        </View>
+      </TouchableOpacity>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  header: {
+    height: 64,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  subtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  cartPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 8,
+  },
+  cartPillActive: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#10b981',
+  },
+  cartIconWrapper: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -8,
+    backgroundColor: '#059669',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  cartLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748b',
+    letterSpacing: 0.5,
+  },
+  cartAmount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+});

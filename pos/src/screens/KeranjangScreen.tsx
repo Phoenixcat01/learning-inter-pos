@@ -1,8 +1,18 @@
 import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  Modal,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 import { usePOS } from '../context/POSContext';
 import { Transaction } from '../types';
 import { PlusIcon, MinusIcon, TrashIcon, CheckIcon, CloseIcon } from '../components/Icons';
-import { formatRupiah, formatDateTime } from '../utils/format';
+import { formatRupiah, formatDateTime, showPOSAlert } from '../utils/format';
 
 export const KeranjangScreen: React.FC = () => {
   const {
@@ -16,6 +26,9 @@ export const KeranjangScreen: React.FC = () => {
     cartGrandTotal,
     setActiveTab,
   } = usePOS();
+
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
 
   const [customerName, setCustomerName] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'QRIS' | 'Debit/Kredit'>('Cash');
@@ -32,12 +45,12 @@ export const KeranjangScreen: React.FC = () => {
 
   const handleProcessCheckout = () => {
     if (cart.length === 0) {
-      alert('Keranjang belanja masih kosong!');
+      showPOSAlert('Keranjang Kosong', 'Tambahkan produk terlebih dahulu dari Kasir.');
       return;
     }
 
     if (paymentMethod === 'Cash' && cashGiven < finalTotal) {
-      alert('Nominal uang tunai kurang dari total tagihan!');
+      showPOSAlert('Uang Kurang', 'Nominal uang tunai yang diterima kurang dari total tagihan.');
       return;
     }
 
@@ -54,292 +67,717 @@ export const KeranjangScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col md:flex-row h-full overflow-hidden bg-slate-50">
-      {/* Left Column: Cart Items List */}
-      <div className="flex-1 flex flex-col h-full border-r border-slate-200 overflow-hidden">
-        <div className="p-6 pb-3 flex items-center justify-between shrink-0">
-          <div>
-            <h3 className="font-bold text-slate-800 text-lg">Daftar Item Belanja</h3>
-            <p className="text-xs text-slate-500">Kelola kuantitas dan daftar pesanan pelanggan</p>
-          </div>
+    <View style={[styles.container, isDesktop ? styles.containerDesktop : styles.containerMobile]}>
+      {/* Items Section */}
+      <View style={styles.itemsSection}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Item Belanja</Text>
+            <Text style={styles.sectionSubtitle}>Daftar pesanan aktif</Text>
+          </View>
           {cart.length > 0 && (
-            <button
-              onClick={clearCart}
-              className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
-            >
-              Kosongkan Keranjang
-            </button>
+            <TouchableOpacity activeOpacity={0.7} onPress={clearCart}>
+              <Text style={styles.clearText}>Kosongkan</Text>
+            </TouchableOpacity>
           )}
-        </div>
+        </View>
 
-        <div className="flex-1 overflow-y-auto p-6 pt-2">
+        <ScrollView contentContainerStyle={styles.itemList}>
           {cart.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white rounded-2xl border border-slate-200 border-dashed">
-              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
-                <TrashIcon size={24} />
-              </div>
-              <h4 className="font-bold text-slate-700 text-base">Keranjang Anda Masih Kosong</h4>
-              <p className="text-xs text-slate-400 max-w-xs mt-1">
-                Pilih menu dan masukkan produk yang diinginkan dari menu Kasir untuk memulai transaksi.
-              </p>
-              <button
-                onClick={() => setActiveTab('kasir')}
-                className="mt-5 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+            <View style={styles.emptyCart}>
+              <View style={styles.emptyCartIcon}>
+                <TrashIcon size={32} color="#94a3b8" />
+              </View>
+              <Text style={styles.emptyTitle}>Keranjang Masih Kosong</Text>
+              <Text style={styles.emptySubtitle}>
+                Pilih menu di Kasir untuk memasukkan item ke keranjang.
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setActiveTab('kasir')}
+                style={styles.backToKasirBtn}
               >
-                Kembali ke Kasir
-              </button>
-            </div>
+                <Text style={styles.backToKasirText}>Buka Kasir</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
-            <div className="space-y-3">
-              {cart.map((item) => (
-                <div
-                  key={item.product.id}
-                  className="bg-white rounded-2xl p-4 border border-slate-200 flex items-center justify-between shadow-xs hover:border-slate-300 transition-all"
-                >
-                  <div className="flex-1 pr-4">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                      {item.product.category} • {item.product.sku}
-                    </span>
-                    <h4 className="font-bold text-slate-800 text-sm mt-0.5">{item.product.name}</h4>
-                    <span className="text-xs font-semibold text-emerald-700 block mt-1">
-                      {formatRupiah(item.product.price)}
-                    </span>
-                  </div>
+            cart.map((item) => (
+              <View key={item.product.id} style={styles.cartCard}>
+                <View style={styles.cartCardInfo}>
+                  <Text style={styles.cartItemCategory}>
+                    {item.product.category} • {item.product.sku}
+                  </Text>
+                  <Text style={styles.cartItemName}>{item.product.name}</Text>
+                  <Text style={styles.cartItemPrice}>{formatRupiah(item.product.price)}</Text>
+                </View>
 
-                  {/* Quantity Controls */}
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center space-x-1.5 bg-slate-100 rounded-xl p-1 border border-slate-200">
-                      <button
-                        onClick={() => updateCartQty(item.product.id, -1)}
-                        className="w-7 h-7 rounded-lg bg-white hover:bg-slate-200 flex items-center justify-center text-slate-700 transition-colors shadow-xs cursor-pointer"
-                      >
-                        <MinusIcon size={14} />
-                      </button>
-                      <span className="w-8 text-center text-xs font-bold text-slate-900">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateCartQty(item.product.id, 1)}
-                        className="w-7 h-7 rounded-lg bg-white hover:bg-slate-200 flex items-center justify-center text-slate-700 transition-colors shadow-xs cursor-pointer"
-                      >
-                        <PlusIcon size={14} />
-                      </button>
-                    </div>
-
-                    <div className="w-24 text-right">
-                      <span className="text-xs font-extrabold text-slate-900 block">
-                        {formatRupiah(item.subtotal)}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={() => removeFromCart(item.product.id)}
-                      className="p-2 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                      title="Hapus Item"
+                {/* Controls */}
+                <View style={styles.cartCardControls}>
+                  <View style={styles.qtyBox}>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => updateCartQty(item.product.id, -1)}
+                      style={styles.qtyBtn}
                     >
-                      <TrashIcon size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                      <MinusIcon size={14} color="#334155" />
+                    </TouchableOpacity>
+                    <Text style={styles.qtyNumber}>{item.quantity}</Text>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => updateCartQty(item.product.id, 1)}
+                      style={styles.qtyBtn}
+                    >
+                      <PlusIcon size={14} color="#334155" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text style={styles.itemSubtotal}>{formatRupiah(item.subtotal)}</Text>
+
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => removeFromCart(item.product.id)}
+                    style={styles.deleteBtn}
+                  >
+                    <TrashIcon size={18} color="#e11d48" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
           )}
-        </div>
-      </div>
+        </ScrollView>
+      </View>
 
-      {/* Right Column: Checkout & Payment Summary */}
-      <div className="w-full md:w-96 bg-white flex flex-col justify-between shrink-0 shadow-md p-6 overflow-y-auto">
-        <div className="space-y-5">
-          <div>
-            <h3 className="font-bold text-slate-800 text-base">Ringkasan Pembayaran</h3>
-            <p className="text-xs text-slate-400">Pastikan nominal dan rincian transaksi telah sesuai</p>
-          </div>
+      {/* Checkout Sidebar/Bottom */}
+      <ScrollView style={[styles.checkoutSection, isDesktop && styles.checkoutSectionDesktop]}>
+        <Text style={styles.checkoutTitle}>Ringkasan Pembayaran</Text>
 
-          {/* Customer Name Input */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Nama Pelanggan (Opsional)</label>
-            <input
-              type="text"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Contoh: Budi Santoso"
-              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
-            />
-          </div>
+        {/* Customer Name */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Nama Pelanggan (Opsional)</Text>
+          <TextInput
+            value={customerName}
+            onChangeText={setCustomerName}
+            placeholder="Contoh: Budi"
+            placeholderTextColor="#94a3b8"
+            style={styles.textInput}
+          />
+        </View>
 
-          {/* Payment Method Selector */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Metode Pembayaran</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['Cash', 'QRIS', 'Debit/Kredit'] as const).map((method) => (
-                <button
+        {/* Payment Method */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Metode Pembayaran</Text>
+          <View style={styles.methodRow}>
+            {(['Cash', 'QRIS', 'Debit/Kredit'] as const).map((method) => {
+              const isActive = paymentMethod === method;
+              return (
+                <TouchableOpacity
                   key={method}
-                  onClick={() => setPaymentMethod(method)}
-                  className={`py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                    paymentMethod === method
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm shadow-emerald-600/30'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
+                  activeOpacity={0.7}
+                  onPress={() => setPaymentMethod(method)}
+                  style={[styles.methodBtn, isActive && styles.methodBtnActive]}
                 >
-                  {method}
-                </button>
+                  <Text style={[styles.methodBtnText, isActive && styles.methodBtnTextActive]}>
+                    {method}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Cash Input */}
+        {paymentMethod === 'Cash' && cart.length > 0 && (
+          <View style={styles.cashBox}>
+            <Text style={styles.cashLabel}>Nominal Uang Diterima</Text>
+            <TextInput
+              value={cashGiven ? String(cashGiven) : ''}
+              onChangeText={(val) => setCashGiven(Number(val.replace(/[^0-9]/g, '')))}
+              keyboardType="numeric"
+              placeholder="0"
+              placeholderTextColor="#94a3b8"
+              style={styles.cashInput}
+            />
+
+            <View style={styles.quickCashRow}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleQuickCash(finalTotal)}
+                style={styles.quickCashBtn}
+              >
+                <Text style={styles.quickCashText}>Uang Pas</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleQuickCash(50000)}
+                style={styles.quickCashBtn}
+              >
+                <Text style={styles.quickCashText}>50.000</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleQuickCash(100000)}
+                style={styles.quickCashBtn}
+              >
+                <Text style={styles.quickCashText}>100.000</Text>
+              </TouchableOpacity>
+            </View>
+
+            {cashGiven >= finalTotal && (
+              <View style={styles.changeRow}>
+                <Text style={styles.changeLabel}>Kembalian:</Text>
+                <Text style={styles.changeAmount}>{formatRupiah(change)}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Calculation */}
+        <View style={styles.calcContainer}>
+          <View style={styles.calcRow}>
+            <Text style={styles.calcLabel}>Subtotal</Text>
+            <Text style={styles.calcValue}>{formatRupiah(cartSubtotal)}</Text>
+          </View>
+          <View style={styles.calcRow}>
+            <Text style={styles.calcLabel}>PPN (10%)</Text>
+            <Text style={styles.calcValue}>{formatRupiah(cartTax)}</Text>
+          </View>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total Akhir</Text>
+            <Text style={styles.totalValue}>{formatRupiah(finalTotal)}</Text>
+          </View>
+        </View>
+
+        {/* Checkout Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleProcessCheckout}
+          disabled={cart.length === 0}
+          style={[styles.payBtn, cart.length === 0 && styles.payBtnDisabled]}
+        >
+          <CheckIcon size={18} color="#ffffff" />
+          <Text style={styles.payBtnText}>Selesaikan Pembayaran</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* Success Receipt Modal */}
+      <Modal
+        visible={!!completedTransaction}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCompletedTransaction(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.receiptHeader}>
+              <View style={styles.successIconCircle}>
+                <CheckIcon size={24} color="#059669" />
+              </View>
+              <Text style={styles.receiptTitle}>Transaksi Berhasil!</Text>
+              <Text style={styles.receiptInvoice}>{completedTransaction?.invoiceNumber}</Text>
+              <Text style={styles.receiptDate}>
+                {completedTransaction ? formatDateTime(completedTransaction.date) : ''}
+              </Text>
+            </View>
+
+            {/* Item List */}
+            <ScrollView style={styles.receiptItemsScroll}>
+              {completedTransaction?.items.map((item) => (
+                <View key={item.id} style={styles.receiptItemRow}>
+                  <Text style={styles.receiptItemName}>
+                    {item.name} x{item.quantity}
+                  </Text>
+                  <Text style={styles.receiptItemSubtotal}>{formatRupiah(item.subtotal)}</Text>
+                </View>
               ))}
-            </div>
-          </div>
+            </ScrollView>
 
-          {/* Cash Input if Cash Selected */}
-          {paymentMethod === 'Cash' && cart.length > 0 && (
-            <div className="space-y-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
-              <label className="block text-[11px] font-bold text-slate-600">Nominal Uang Diterima</label>
-              <input
-                type="number"
-                value={cashGiven || ''}
-                onChange={(e) => setCashGiven(Number(e.target.value))}
-                placeholder="Masukkan jumlah uang..."
-                className="w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-              />
-
-              <div className="flex items-center space-x-1.5 pt-1">
-                <button
-                  onClick={() => handleQuickCash(finalTotal)}
-                  className="px-2 py-1 text-[10px] font-bold rounded bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer"
-                >
-                  Uang Pas
-                </button>
-                <button
-                  onClick={() => handleQuickCash(50000)}
-                  className="px-2 py-1 text-[10px] font-bold rounded bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer"
-                >
-                  50.000
-                </button>
-                <button
-                  onClick={() => handleQuickCash(100000)}
-                  className="px-2 py-1 text-[10px] font-bold rounded bg-slate-200 hover:bg-slate-300 text-slate-700 cursor-pointer"
-                >
-                  100.000
-                </button>
-              </div>
-
-              {cashGiven >= finalTotal && (
-                <div className="flex justify-between items-center pt-2 text-xs font-bold text-emerald-800">
-                  <span>Kembalian:</span>
-                  <span>{formatRupiah(change)}</span>
-                </div>
+            {/* Financial Summary */}
+            <View style={styles.receiptSummary}>
+              <View style={styles.receiptRow}>
+                <Text style={styles.receiptSubtext}>Total Tagihan</Text>
+                <Text style={styles.receiptGrandTotal}>
+                  {formatRupiah(completedTransaction?.total || 0)}
+                </Text>
+              </View>
+              {completedTransaction?.paymentMethod === 'Cash' && (
+                <View style={styles.receiptRow}>
+                  <Text style={styles.receiptSubtext}>Kembalian</Text>
+                  <Text style={styles.receiptChange}>
+                    {formatRupiah(completedTransaction?.change || 0)}
+                  </Text>
+                </View>
               )}
-            </div>
-          )}
-
-          {/* Breakdown calculation */}
-          <div className="space-y-2 pt-3 border-t border-slate-200 text-xs">
-            <div className="flex justify-between text-slate-600">
-              <span>Subtotal</span>
-              <span>{formatRupiah(cartSubtotal)}</span>
-            </div>
-            <div className="flex justify-between text-slate-600">
-              <span>PPN (10%)</span>
-              <span>{formatRupiah(cartTax)}</span>
-            </div>
-            <div className="flex justify-between text-base font-extrabold text-slate-900 pt-2 border-t border-slate-200">
-              <span>Total Akhir</span>
-              <span className="text-emerald-700">{formatRupiah(finalTotal)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Button */}
-        <div className="pt-6">
-          <button
-            onClick={handleProcessCheckout}
-            disabled={cart.length === 0}
-            className={`w-full py-3.5 rounded-xl font-bold text-sm shadow-lg transition-all cursor-pointer flex items-center justify-center space-x-2 ${
-              cart.length === 0
-                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30'
-            }`}
-          >
-            <CheckIcon size={18} />
-            <span>Selesaikan Pembayaran</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Transaction Success Modal / Receipt */}
-      {completedTransaction && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
-            <div className="text-center pb-4 border-b border-dashed border-slate-300">
-              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-2">
-                <CheckIcon size={24} />
-              </div>
-              <h4 className="font-extrabold text-lg text-slate-800">Transaksi Berhasil!</h4>
-              <p className="text-xs text-slate-500 font-mono mt-0.5">{completedTransaction.invoiceNumber}</p>
-              <p className="text-[11px] text-slate-400 mt-1">{formatDateTime(completedTransaction.date)}</p>
-            </div>
-
-            {/* Receipt Items */}
-            <div className="py-4 space-y-2 border-b border-dashed border-slate-300 max-h-48 overflow-y-auto">
-              {completedTransaction.items.map((item) => (
-                <div key={item.id} className="flex justify-between text-xs">
-                  <span className="text-slate-700">
-                    {item.name} <span className="text-slate-400">x{item.quantity}</span>
-                  </span>
-                  <span className="font-semibold text-slate-900">{formatRupiah(item.subtotal)}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Financial Details */}
-            <div className="py-3 space-y-1.5 text-xs border-b border-slate-200">
-              <div className="flex justify-between text-slate-500">
-                <span>Subtotal</span>
-                <span>{formatRupiah(completedTransaction.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-slate-500">
-                <span>PPN 10%</span>
-                <span>{formatRupiah(completedTransaction.tax)}</span>
-              </div>
-              <div className="flex justify-between font-bold text-slate-900 pt-1">
-                <span>Total Bayar ({completedTransaction.paymentMethod})</span>
-                <span className="text-emerald-700">{formatRupiah(completedTransaction.total)}</span>
-              </div>
-              {completedTransaction.paymentMethod === 'Cash' && (
-                <>
-                  <div className="flex justify-between text-slate-500">
-                    <span>Uang Diterima</span>
-                    <span>{formatRupiah(completedTransaction.cashReceived || 0)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-slate-700">
-                    <span>Kembalian</span>
-                    <span>{formatRupiah(completedTransaction.change || 0)}</span>
-                  </div>
-                </>
-              )}
-            </div>
+            </View>
 
             {/* Modal Actions */}
-            <div className="mt-5 flex space-x-2">
-              <button
-                onClick={() => {
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
                   setCompletedTransaction(null);
                   setActiveTab('kasir');
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                style={styles.modalBtnSecondary}
               >
-                Transaksi Baru
-              </button>
-              <button
-                onClick={() => {
+                <Text style={styles.modalBtnSecondaryText}>Transaksi Baru</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
                   setCompletedTransaction(null);
                   setActiveTab('riwayat');
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                style={styles.modalBtnPrimary}
               >
-                Lihat di Riwayat
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+                <Text style={styles.modalBtnPrimaryText}>Cek Riwayat</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  containerDesktop: {
+    flexDirection: 'row',
+  },
+  containerMobile: {
+    flexDirection: 'column',
+  },
+  itemsSection: {
+    flex: 1,
+    borderRightWidth: 1,
+    borderRightColor: '#e2e8f0',
+  },
+  sectionHeader: {
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  sectionSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 1,
+  },
+  clearText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#e11d48',
+  },
+  itemList: {
+    padding: 12,
+    gap: 8,
+  },
+  emptyCart: {
+    padding: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyCartIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 4,
+    textAlign: 'center',
+    maxWidth: 240,
+  },
+  backToKasirBtn: {
+    marginTop: 16,
+    backgroundColor: '#059669',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  backToKasirText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  cartCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cartCardInfo: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  cartItemCategory: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+  },
+  cartItemName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginTop: 2,
+  },
+  cartItemPrice: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#059669',
+    marginTop: 2,
+  },
+  cartCardControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  qtyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    padding: 2,
+  },
+  qtyBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyNumber: {
+    width: 28,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  itemSubtotal: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0f172a',
+    minWidth: 70,
+    textAlign: 'right',
+  },
+  deleteBtn: {
+    padding: 4,
+  },
+  checkoutSection: {
+    padding: 16,
+    backgroundColor: '#ffffff',
+  },
+  checkoutSectionDesktop: {
+    width: 340,
+  },
+  checkoutTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginBottom: 12,
+  },
+  inputGroup: {
+    marginBottom: 12,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 4,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 12,
+    color: '#0f172a',
+    backgroundColor: '#f8fafc',
+  },
+  methodRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  methodBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+  },
+  methodBtnActive: {
+    backgroundColor: '#059669',
+    borderColor: '#059669',
+  },
+  methodBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  methodBtnTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  cashBox: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 12,
+  },
+  cashLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#475569',
+    marginBottom: 4,
+  },
+  cashInput: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  quickCashRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 8,
+  },
+  quickCashBtn: {
+    flex: 1,
+    backgroundColor: '#e2e8f0',
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  quickCashText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  changeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  changeLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  changeAmount: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  calcContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    paddingTop: 10,
+    gap: 6,
+    marginBottom: 16,
+  },
+  calcRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  calcLabel: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  calcValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+  },
+  totalLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  totalValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  payBtn: {
+    backgroundColor: '#059669',
+    borderRadius: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  payBtnDisabled: {
+    backgroundColor: '#cbd5e1',
+  },
+  payBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 380,
+    padding: 20,
+  },
+  receiptHeader: {
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingBottom: 12,
+  },
+  successIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#ecfdf5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  receiptTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  receiptInvoice: {
+    fontSize: 11,
+    fontFamily: 'monospace',
+    color: '#64748b',
+    marginTop: 2,
+  },
+  receiptDate: {
+    fontSize: 10,
+    color: '#94a3b8',
+    marginTop: 2,
+  },
+  receiptItemsScroll: {
+    maxHeight: 140,
+    marginVertical: 10,
+  },
+  receiptItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  receiptItemName: {
+    fontSize: 11,
+    color: '#334155',
+  },
+  receiptItemSubtotal: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  receiptSummary: {
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    paddingTop: 8,
+    gap: 4,
+  },
+  receiptRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  receiptSubtext: {
+    fontSize: 11,
+    color: '#64748b',
+  },
+  receiptGrandTotal: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  receiptChange: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+  },
+  modalBtnSecondary: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  modalBtnSecondaryText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  modalBtnPrimary: {
+    flex: 1,
+    backgroundColor: '#059669',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  modalBtnPrimaryText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+});

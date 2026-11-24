@@ -1,4 +1,13 @@
 import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  ScrollView,
+  Modal,
+  StyleSheet,
+} from 'react-native';
 import { usePOS } from '../context/POSContext';
 import { Transaction } from '../types';
 import { HistoryIcon, SearchIcon, CloseIcon } from '../components/Icons';
@@ -26,202 +35,457 @@ export const RiwayatScreen: React.FC = () => {
   const avgTransaction = transactions.length > 0 ? Math.round(totalRevenue / transactions.length) : 0;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50">
+    <View style={styles.container}>
       {/* Top Stats Banner */}
-      <div className="p-6 pb-2 grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-            Total Pendapatan
-          </span>
-          <p className="text-xl font-extrabold text-emerald-700 mt-1">{formatRupiah(totalRevenue)}</p>
-        </div>
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Total Pendapatan</Text>
+          <Text style={[styles.statValue, styles.statValueGreen]}>{formatRupiah(totalRevenue)}</Text>
+        </View>
 
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-            Jumlah Transaksi
-          </span>
-          <p className="text-xl font-extrabold text-slate-800 mt-1">
-            {transactions.length} <span className="text-xs font-medium text-slate-500">transaksi ({totalItemsSold} item)</span>
-          </p>
-        </div>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Jumlah Transaksi</Text>
+          <Text style={styles.statValue}>
+            {transactions.length}{' '}
+            <Text style={styles.statSub}>({totalItemsSold} pcs)</Text>
+          </Text>
+        </View>
 
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-            Rata-rata Transaksi
-          </span>
-          <p className="text-xl font-extrabold text-slate-800 mt-1">{formatRupiah(avgTransaction)}</p>
-        </div>
-      </div>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Rata-Rata Transaksi</Text>
+          <Text style={styles.statValue}>{formatRupiah(avgTransaction)}</Text>
+        </View>
+      </View>
 
       {/* Search Bar */}
-      <div className="px-6 py-2 flex items-center justify-between shrink-0">
-        <div className="relative w-full max-w-sm">
-          <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-            <SearchIcon size={16} />
-          </span>
-          <input
-            type="text"
+      <View style={styles.searchSection}>
+        <View style={styles.searchBox}>
+          <SearchIcon size={16} color="#94a3b8" />
+          <TextInput
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari nomor nota, pelanggan, atau metode..."
-            className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
+            onChangeText={setSearch}
+            placeholder="Cari nomor nota atau pelanggan..."
+            placeholderTextColor="#94a3b8"
+            style={styles.searchInput}
           />
-        </div>
-      </div>
+        </View>
+      </View>
 
       {/* Transactions List */}
-      <div className="flex-1 overflow-y-auto p-6 pt-2">
+      <ScrollView contentContainerStyle={styles.listContent}>
         {filteredTransactions.length === 0 ? (
-          <div className="h-64 flex flex-col items-center justify-center text-center p-8 bg-white rounded-2xl border border-slate-200 border-dashed">
-            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
-              <HistoryIcon size={24} />
-            </div>
-            <h4 className="font-bold text-slate-700 text-base">Belum Ada Riwayat Transaksi</h4>
-            <p className="text-xs text-slate-400 max-w-xs mt-1">
-              Transaksi yang berhasil dilakukan melalui menu Kasir & Keranjang akan tercatat di sini secara otomatis.
-            </p>
-            <button
-              onClick={() => setActiveTab('kasir')}
-              className="mt-4 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconCircle}>
+              <HistoryIcon size={32} color="#94a3b8" />
+            </View>
+            <Text style={styles.emptyTitle}>Belum Ada Riwayat Transaksi</Text>
+            <Text style={styles.emptySubtitle}>
+              Transaksi yang selesai di Kasir akan tercatat di sini secara otomatis.
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setActiveTab('kasir')}
+              style={styles.startBtn}
             >
-              Mulai Transaksi
-            </button>
-          </div>
+              <Text style={styles.startBtnText}>Mulai Transaksi</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold tracking-wider">
-                  <tr>
-                    <th className="py-3.5 px-4">No. Invoice</th>
-                    <th className="py-3.5 px-4">Waktu</th>
-                    <th className="py-3.5 px-4">Pelanggan</th>
-                    <th className="py-3.5 px-4">Item</th>
-                    <th className="py-3.5 px-4">Metode</th>
-                    <th className="py-3.5 px-4 text-right">Total</th>
-                    <th className="py-3.5 px-4 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredTransactions.map((trx) => (
-                    <tr key={trx.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-slate-800">{trx.invoiceNumber}</td>
-                      <td className="py-3 px-4 text-slate-500">{formatDateTime(trx.date)}</td>
-                      <td className="py-3 px-4 font-medium text-slate-700">{trx.customerName || 'Pelanggan Umum'}</td>
-                      <td className="py-3 px-4 text-slate-500">
-                        {trx.items.length} jenis ({trx.items.reduce((s, i) => s + i.quantity, 0)} pcs)
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700">
-                          {trx.paymentMethod}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right font-extrabold text-slate-900">
-                        {formatRupiah(trx.total)}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => setSelectedTrx(trx)}
-                          className="px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] transition-colors cursor-pointer"
-                        >
-                          Lihat Struk
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          filteredTransactions.map((trx) => (
+            <TouchableOpacity
+              key={trx.id}
+              activeOpacity={0.7}
+              onPress={() => setSelectedTrx(trx)}
+              style={styles.trxCard}
+            >
+              <View style={styles.trxCardTop}>
+                <View>
+                  <Text style={styles.invoiceNumber}>{trx.invoiceNumber}</Text>
+                  <Text style={styles.customerName}>{trx.customerName || 'Pelanggan Umum'}</Text>
+                </View>
+                <View style={styles.paymentBadge}>
+                  <Text style={styles.paymentBadgeText}>{trx.paymentMethod}</Text>
+                </View>
+              </View>
+
+              <View style={styles.trxCardDivider} />
+
+              <View style={styles.trxCardBottom}>
+                <View>
+                  <Text style={styles.trxDate}>{formatDateTime(trx.date)}</Text>
+                  <Text style={styles.trxItemCount}>
+                    {trx.items.length} jenis item ({trx.items.reduce((s, i) => s + i.quantity, 0)} pcs)
+                  </Text>
+                </View>
+                <View style={styles.trxTotalCol}>
+                  <Text style={styles.trxTotalLabel}>Total</Text>
+                  <Text style={styles.trxTotalValue}>{formatRupiah(trx.total)}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))
         )}
-      </div>
+      </ScrollView>
 
       {/* Transaction Detail Modal */}
-      {selectedTrx && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <div>
-                <h4 className="font-extrabold text-base text-slate-800">Detail Nota Transaksi</h4>
-                <p className="text-xs font-mono text-slate-500">{selectedTrx.invoiceNumber}</p>
-              </div>
-              <button
-                onClick={() => setSelectedTrx(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
-              >
-                <CloseIcon size={20} />
-              </button>
-            </div>
+      <Modal
+        visible={!!selectedTrx}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedTrx(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Detail Transaksi</Text>
+                <Text style={styles.modalSubtitle}>{selectedTrx?.invoiceNumber}</Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setSelectedTrx(null)}>
+                <CloseIcon size={20} color="#64748b" />
+              </TouchableOpacity>
+            </View>
 
-            <div className="py-3 text-xs space-y-1 text-slate-500 border-b border-slate-100">
-              <div className="flex justify-between">
-                <span>Waktu Transaksi:</span>
-                <span className="font-medium text-slate-800">{formatDateTime(selectedTrx.date)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Pelanggan:</span>
-                <span className="font-medium text-slate-800">{selectedTrx.customerName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Metode Pembayaran:</span>
-                <span className="font-medium text-slate-800">{selectedTrx.paymentMethod}</span>
-              </div>
-            </div>
+            <View style={styles.modalMeta}>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Waktu:</Text>
+                <Text style={styles.metaValue}>
+                  {selectedTrx ? formatDateTime(selectedTrx.date) : ''}
+                </Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Pelanggan:</Text>
+                <Text style={styles.metaValue}>{selectedTrx?.customerName}</Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Metode Bayar:</Text>
+                <Text style={styles.metaValue}>{selectedTrx?.paymentMethod}</Text>
+              </View>
+            </View>
 
             {/* Items */}
-            <div className="py-3 space-y-2 max-h-48 overflow-y-auto border-b border-slate-100">
-              {selectedTrx.items.map((item) => (
-                <div key={item.id} className="flex justify-between text-xs">
-                  <div>
-                    <p className="font-semibold text-slate-800">{item.name}</p>
-                    <p className="text-[11px] text-slate-400">
+            <ScrollView style={styles.modalItemsScroll}>
+              {selectedTrx?.items.map((item) => (
+                <View key={item.id} style={styles.modalItemRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalItemName}>{item.name}</Text>
+                    <Text style={styles.modalItemSub}>
                       {item.quantity} x {formatRupiah(item.price)}
-                    </p>
-                  </div>
-                  <span className="font-bold text-slate-900">{formatRupiah(item.subtotal)}</span>
-                </div>
+                    </Text>
+                  </View>
+                  <Text style={styles.modalItemTotal}>{formatRupiah(item.subtotal)}</Text>
+                </View>
               ))}
-            </div>
+            </ScrollView>
 
-            {/* Summary */}
-            <div className="py-3 space-y-1 text-xs">
-              <div className="flex justify-between text-slate-500">
-                <span>Subtotal</span>
-                <span>{formatRupiah(selectedTrx.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-slate-500">
-                <span>PPN 10%</span>
-                <span>{formatRupiah(selectedTrx.tax)}</span>
-              </div>
-              <div className="flex justify-between text-sm font-extrabold text-slate-900 pt-1 border-t border-slate-200">
-                <span>Total Tagihan</span>
-                <span className="text-emerald-700">{formatRupiah(selectedTrx.total)}</span>
-              </div>
-              {selectedTrx.paymentMethod === 'Cash' && (
-                <>
-                  <div className="flex justify-between text-slate-500 pt-1">
-                    <span>Uang Diterima</span>
-                    <span>{formatRupiah(selectedTrx.cashReceived || 0)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-slate-700">
-                    <span>Kembalian</span>
-                    <span>{formatRupiah(selectedTrx.change || 0)}</span>
-                  </div>
-                </>
-              )}
-            </div>
+            {/* Financial Breakdown */}
+            <View style={styles.modalBreakdown}>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>Subtotal</Text>
+                <Text style={styles.metaValue}>{formatRupiah(selectedTrx?.subtotal || 0)}</Text>
+              </View>
+              <View style={styles.metaRow}>
+                <Text style={styles.metaLabel}>PPN (10%)</Text>
+                <Text style={styles.metaValue}>{formatRupiah(selectedTrx?.tax || 0)}</Text>
+              </View>
+              <View style={[styles.metaRow, styles.metaRowTotal]}>
+                <Text style={styles.modalTotalLabel}>Total Bayar</Text>
+                <Text style={styles.modalTotalValue}>{formatRupiah(selectedTrx?.total || 0)}</Text>
+              </View>
+            </View>
 
-            <div className="mt-4 pt-3 border-t border-slate-200">
-              <button
-                onClick={() => setSelectedTrx(null)}
-                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setSelectedTrx(null)}
+              style={styles.closeBtn}
+            >
+              <Text style={styles.closeBtnText}>Tutup</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    padding: 12,
+    gap: 8,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  statLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748b',
+    textTransform: 'uppercase',
+  },
+  statValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginTop: 2,
+  },
+  statValueGreen: {
+    color: '#059669',
+  },
+  statSub: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: '#64748b',
+  },
+  searchSection: {
+    padding: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    height: 38,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 12,
+    color: '#0f172a',
+  },
+  listContent: {
+    padding: 12,
+    gap: 8,
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 4,
+    textAlign: 'center',
+    maxWidth: 260,
+  },
+  startBtn: {
+    marginTop: 16,
+    backgroundColor: '#059669',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  startBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  trxCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  trxCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  invoiceNumber: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0f172a',
+    fontFamily: 'monospace',
+  },
+  customerName: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  paymentBadge: {
+    backgroundColor: '#ecfdf5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+  },
+  paymentBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  trxCardDivider: {
+    height: 1,
+    backgroundColor: '#f1f5f9',
+    marginVertical: 10,
+  },
+  trxCardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  trxDate: {
+    fontSize: 11,
+    color: '#64748b',
+  },
+  trxItemCount: {
+    fontSize: 10,
+    color: '#94a3b8',
+    marginTop: 1,
+  },
+  trxTotalCol: {
+    alignItems: 'flex-end',
+  },
+  trxTotalLabel: {
+    fontSize: 9,
+    color: '#94a3b8',
+  },
+  trxTotalValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  modalCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    width: '100%',
+    maxWidth: 380,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  modalSubtitle: {
+    fontSize: 11,
+    color: '#64748b',
+    fontFamily: 'monospace',
+    marginTop: 2,
+  },
+  modalMeta: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+    gap: 4,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  metaLabel: {
+    fontSize: 11,
+    color: '#64748b',
+  },
+  metaValue: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  modalItemsScroll: {
+    maxHeight: 140,
+    marginVertical: 10,
+  },
+  modalItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  modalItemName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  modalItemSub: {
+    fontSize: 10,
+    color: '#94a3b8',
+  },
+  modalItemTotal: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  modalBreakdown: {
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    paddingTop: 8,
+    gap: 4,
+  },
+  metaRowTotal: {
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  modalTotalLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  modalTotalValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  closeBtn: {
+    marginTop: 14,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  closeBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+});

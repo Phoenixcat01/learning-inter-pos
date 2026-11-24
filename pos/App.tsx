@@ -1,4 +1,6 @@
 import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions, SafeAreaView, Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import './tailwind.css';
 import { POSProvider, usePOS } from './src/context/POSContext';
 import { Sidebar } from './src/components/Sidebar';
@@ -13,6 +15,8 @@ import { TabType } from './src/types';
 
 function MainLayout() {
   const { activeTab, setActiveTab, cartTotalQty, transactions } = usePOS();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
 
   const renderScreen = () => {
     switch (activeTab) {
@@ -40,47 +44,51 @@ function MainLayout() {
   ];
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-100 font-sans antialiased text-slate-800">
-      {/* Desktop / Tablet Sidebar */}
-      <div className="hidden md:flex shrink-0">
-        <Sidebar />
-      </div>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar style="dark" />
+      <View style={styles.rootContainer}>
+        {/* Desktop / Tablet Sidebar */}
+        {isDesktop && <Sidebar />}
 
-      {/* Main Content Viewport */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Header />
-        <main className="flex-1 flex flex-col overflow-hidden relative">
-          {renderScreen()}
-        </main>
+        {/* Main Content Area */}
+        <View style={styles.contentArea}>
+          <Header />
+          <View style={styles.screenWrapper}>
+            {renderScreen()}
+          </View>
 
-        {/* Mobile Bottom Navigation Bar (Hidden on md and larger) */}
-        <nav className="md:hidden bg-slate-900 border-t border-slate-800 flex items-center justify-around py-2 px-1 shrink-0 z-30">
-          {mobileNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.key;
-            return (
-              <button
-                key={item.key}
-                onClick={() => setActiveTab(item.key)}
-                className={`relative flex flex-col items-center py-1 px-3 rounded-lg text-[10px] font-medium transition-colors ${
-                  isActive ? 'text-emerald-400 font-bold' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <div className="relative">
-                  <Icon size={18} color={isActive ? '#34d399' : '#94a3b8'} />
-                  {typeof item.badge === 'number' && item.badge > 0 && (
-                    <span className="absolute -top-1.5 -right-2 bg-emerald-500 text-white text-[9px] font-bold w-3.5 h-3.5 rounded-full flex items-center justify-center">
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-                <span className="mt-1">{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-    </div>
+          {/* Mobile Bottom Navigation (Visible on phones) */}
+          {!isDesktop && (
+            <View style={styles.bottomNav}>
+              {mobileNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.key;
+                return (
+                  <TouchableOpacity
+                    key={item.key}
+                    activeOpacity={0.7}
+                    onPress={() => setActiveTab(item.key)}
+                    style={styles.bottomNavItem}
+                  >
+                    <View style={styles.bottomIconWrapper}>
+                      <Icon size={20} color={isActive ? '#10b981' : '#94a3b8'} />
+                      {typeof item.badge === 'number' && item.badge > 0 && (
+                        <View style={styles.bottomBadge}>
+                          <Text style={styles.bottomBadgeText}>{item.badge}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[styles.bottomNavText, isActive && styles.bottomNavTextActive]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -91,3 +99,68 @@ export default function App() {
     </POSProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  rootContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#f8fafc',
+  },
+  contentArea: {
+    flex: 1,
+    flexDirection: 'column',
+    height: '100%',
+  },
+  screenWrapper: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    backgroundColor: '#0f172a',
+    borderTopWidth: 1,
+    borderTopColor: '#1e293b',
+    paddingVertical: 8,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+  },
+  bottomNavItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  bottomIconWrapper: {
+    position: 'relative',
+  },
+  bottomBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    backgroundColor: '#059669',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomBadgeText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  bottomNavText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#94a3b8',
+    marginTop: 3,
+  },
+  bottomNavTextActive: {
+    color: '#34d399',
+    fontWeight: '700',
+  },
+});

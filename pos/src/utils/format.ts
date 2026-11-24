@@ -1,3 +1,5 @@
+import { Alert, Platform } from 'react-native';
+
 export const formatRupiah = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -22,4 +24,14 @@ export const generateInvoiceNumber = (count: number): string => {
   const dd = String(today.getDate()).padStart(2, '0');
   const num = String(count + 1).padStart(4, '0');
   return `INV-${yyyy}${mm}${dd}-${num}`;
+};
+
+export const showPOSAlert = (title: string, message?: string) => {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.alert) {
+      window.alert(message ? `${title}\n${message}` : title);
+    }
+  } else {
+    Alert.alert(title, message);
+  }
 };
