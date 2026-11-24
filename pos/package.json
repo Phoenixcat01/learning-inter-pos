@@ -1,0 +1,32 @@
+{
+  "name": "pos",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@expo/metro-runtime": "^58.0.17",
+    "@expo/vector-icons": "^15.1.1",
+    "expo": "~58.0.26",
+    "expo-status-bar": "~58.0.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-web": "^0.21.4"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "autoprefixer": "^10.7.0",
+    "postcss": "^8.5.33",
+    "tailwindcss": "3.4.17",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -i ./global.css -o ./tailwind.css",
+    "watch:css": "tailwindcss -i ./global.css -o ./tailwind.css --watch",
+    "start": "tailwindcss -i ./global.css -o ./tailwind.css && expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "tailwindcss -i ./global.css -o ./tailwind.css && expo start --web",
+    "build:web": "tailwindcss -i ./global.css -o ./tailwind.css --minify && expo export --platform web"
+  },
+  "private": true
+}
