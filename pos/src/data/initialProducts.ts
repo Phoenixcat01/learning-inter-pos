@@ -8,6 +8,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 18000,
     stock: 50,
     sku: 'MNM-001',
+    barcode: '8991002100018',
     description: 'Espresso dengan susu segar dan sirup gula aren pilihan',
   },
   {
@@ -17,6 +18,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 15000,
     stock: 45,
     sku: 'MNM-002',
+    barcode: '8991002100025',
     description: 'Double shot espresso dingin segar',
   },
   {
@@ -26,6 +28,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 22000,
     stock: 30,
     sku: 'MNM-003',
+    barcode: '8991002100032',
     description: 'Pure Uji Matcha dengan steamed fresh milk',
   },
   {
@@ -35,6 +38,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 28000,
     stock: 25,
     sku: 'MKN-001',
+    barcode: '8991002100049',
     description: 'Nasi goreng bumbu tradisional dengan telur mata sapi & ayam suwir',
   },
   {
@@ -44,6 +48,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 25000,
     stock: 20,
     sku: 'MKN-002',
+    barcode: '8991002100056',
     description: 'Mie telur gurih dengan sayur segar dan potongan bakso',
   },
   {
@@ -53,6 +58,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 24000,
     stock: 35,
     sku: 'MKN-003',
+    barcode: '8991002100063',
     description: 'Ayam krispi gurih dengan sambal bawang pedas nampol + nasi',
   },
   {
@@ -62,6 +68,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 18000,
     stock: 40,
     sku: 'CML-001',
+    barcode: '8991002100070',
     description: 'French fries renyah dengan taburan bumbu truffle & keju parmesan',
   },
   {
@@ -71,6 +78,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 16000,
     stock: 25,
     sku: 'CML-002',
+    barcode: '8991002100087',
     description: 'Roti panggang mentega dengan topping coklat leleh dan keju parut',
   },
   {
@@ -80,6 +88,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 14000,
     stock: 30,
     sku: 'CML-003',
+    barcode: '8991002100094',
     description: 'Cireng renyah di luar kenyal di dalam dengan saus rujak pedas manis',
   },
   {
@@ -89,6 +98,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 32000,
     stock: 20,
     sku: 'PKT-001',
+    barcode: '8991002100100',
     description: 'Kopi Susu Gula Aren + Kentang Goreng Krispi',
   },
   {
@@ -98,6 +108,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     price: 38000,
     stock: 15,
     sku: 'PKT-002',
+    barcode: '8991002100117',
     description: 'Nasi Goreng Spesial + Americano Ice',
   },
 ];

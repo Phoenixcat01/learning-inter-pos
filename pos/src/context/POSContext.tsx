@@ -1,7 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Product, CartItem, Transaction, Category, TabType } from '../types';
 import { INITIAL_PRODUCTS } from '../data/initialProducts';
-import { generateInvoiceNumber, showPOSAlert } from '../utils/format';
+import { generateInvoiceNumber, generateBarcodeNumber, showPOSAlert } from '../utils/format';
+
+export interface ScanResult {
+  success: boolean;
+  product?: Product;
+  reason?: 'empty' | 'not_found' | 'out_of_stock' | 'max_stock';
+}
 
 interface POSContextType {
   products: Product[];
@@ -14,6 +20,8 @@ interface POSContextType {
   setSelectedCategory: (cat: Category) => void;
   setSearchQuery: (query: string) => void;
   addToCart: (product: Product) => void;
+  findProductByBarcode: (code: string) => Product | undefined;
+  scanBarcodeToCart: (code: string) => ScanResult;
   updateCartQty: (productId: string, delta: number) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
@@ -23,7 +31,7 @@ interface POSContextType {
     cashReceived?: number;
     discount?: number;
   }) => Transaction;
-  addProduct: (product: Omit<Product, 'id' | 'sku'>) => void;
+  addProduct: (product: Omit<Product, 'id' | 'sku' | 'barcode'> & { barcode?: string }) => void;
   updateProduct: (id: string, updates: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
   resetProducts: () => void;
@@ -40,12 +48,22 @@ const STORAGE_KEYS = {
   TRANSACTIONS: 'pos_transactions_v1',
 };
 
+const normalizeProducts = (list: Product[]): Product[] =>
+  list.map((p, idx) => {
+    if (p.barcode && p.barcode.trim()) return p;
+    const initial = INITIAL_PRODUCTS.find((item) => item.id === p.id);
+    return {
+      ...p,
+      barcode: initial?.barcode || generateBarcodeNumber(idx + 1),
+    };
+  });
+
 export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         const saved = window.localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-        if (saved) return JSON.parse(saved);
+        if (saved) return normalizeProducts(JSON.parse(saved));
       }
     } catch (e) {
       console.warn('Failed reading products from localStorage', e);
@@ -126,6 +144,59 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         ];
       }
     });
+  };
+
+  const findProductByBarcode = (code: string): Product | undefined => {
+    const trimmed = code.trim();
+    if (!trimmed) return undefined;
+    return products.find((p) => p.barcode?.trim() === trimmed);
+  };
+
+  const scanBarcodeToCart = (code: string): ScanResult => {
+    const trimmed = code.trim();
+    if (!trimmed) {
+      return { success: false, reason: 'empty' };
+    }
+
+    const product = findProductByBarcode(trimmed);
+    if (!product) {
+      return { success: false, reason: 'not_found' };
+    }
+
+    if (product.stock <= 0) {
+      return { success: false, product, reason: 'out_of_stock' };
+    }
+
+    const existing = cart.find((item) => item.product.id === product.id);
+    if (existing && existing.quantity >= product.stock) {
+      return { success: false, product, reason: 'max_stock' };
+    }
+
+    setCart((prevCart) => {
+      const current = prevCart.find((item) => item.product.id === product.id);
+      if (current) {
+        if (current.quantity >= product.stock) return prevCart;
+        return prevCart.map((item) =>
+          item.product.id === product.id
+            ? {
+                ...item,
+                quantity: item.quantity + 1,
+                subtotal: (item.quantity + 1) * item.product.price,
+              }
+            : item
+        );
+      }
+      return [
+        ...prevCart,
+        {
+          product,
+          quantity: 1,
+          subtotal: product.price,
+        },
+      ];
+    });
+
+    return { success: true, product };
   };
 
   const updateCartQty = (productId: string, delta: number) => {
@@ -220,17 +291,19 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Product management
-  const addProduct = (newProd: Omit<Product, 'id' | 'sku'>) => {
+  const addProduct = (newProd: Omit<Product, 'id' | 'sku' | 'barcode'> & { barcode?: string }) => {
     const id = `prod-${Date.now()}`;
     const skuCode =
       newProd.category.substring(0, 3).toUpperCase() +
       '-' +
       Math.floor(100 + Math.random() * 900);
+    const barcodeCode = newProd.barcode?.trim() || generateBarcodeNumber();
 
     const product: Product = {
       ...newProd,
       id,
       sku: skuCode,
+      barcode: barcodeCode,
     };
     setProducts((prev) => [product, ...prev]);
   };
@@ -263,6 +336,8 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setSelectedCategory,
         setSearchQuery,
         addToCart,
+        findProductByBarcode,
+        scanBarcodeToCart,
         updateCartQty,
         removeFromCart,
         clearCart,

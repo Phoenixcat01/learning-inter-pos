@@ -7,6 +7,7 @@ export interface Product {
   price: number;
   stock: number;
   sku: string;
+  barcode: string;
   image?: string;
   description?: string;
 }

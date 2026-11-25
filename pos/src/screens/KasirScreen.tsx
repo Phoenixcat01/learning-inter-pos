@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,16 +10,22 @@ import {
 } from 'react-native';
 import { usePOS } from '../context/POSContext';
 import { Category } from '../types';
-import { SearchIcon, PlusIcon, CartIcon } from '../components/Icons';
+import { SearchIcon, PlusIcon, CartIcon, BarcodeIcon } from '../components/Icons';
 import { formatRupiah } from '../utils/format';
 
 const CATEGORIES: Category[] = ['Semua', 'Makanan', 'Minuman', 'Cemilan', 'Paket'];
+
+interface ToastState {
+  type: 'success' | 'warning' | 'error';
+  message: string;
+}
 
 export const KasirScreen: React.FC = () => {
   const {
     products,
     cart,
     addToCart,
+    scanBarcodeToCart,
     selectedCategory,
     setSelectedCategory,
     searchQuery,
@@ -32,13 +38,69 @@ export const KasirScreen: React.FC = () => {
   const { width } = useWindowDimensions();
   const numColumns = width >= 1024 ? 4 : width >= 768 ? 3 : width >= 480 ? 2 : 1;
 
+  const [scanValue, setScanValue] = useState<string>('');
+  const [isScannerFocused, setIsScannerFocused] = useState<boolean>(true);
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const scannerInputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
+  const showToast = (type: ToastState['type'], message: string) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToast({ type, message });
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null);
+    }, 2500);
+  };
+
+  const focusScanner = () => {
+    scannerInputRef.current?.focus();
+  };
+
+  const handleBarcodeSubmit = () => {
+    const code = scanValue.trim();
+    setScanValue('');
+
+    if (!code) {
+      setTimeout(() => scannerInputRef.current?.focus(), 50);
+      return;
+    }
+
+    const result = scanBarcodeToCart(code);
+    if (result.success && result.product) {
+      showToast('success', `✓ ${result.product.name} berhasil dimasukkan ke keranjang`);
+    } else if (result.reason === 'out_of_stock' || result.reason === 'max_stock') {
+      showToast(
+        'warning',
+        `Stok ${result.product?.name ?? 'produk'} habis atau sudah mencapai batas maksimal`
+      );
+    } else if (result.reason === 'not_found') {
+      showToast('error', `Barcode ${code} tidak ditemukan`);
+    }
+
+    setTimeout(() => {
+      scannerInputRef.current?.focus();
+    }, 50);
+  };
+
   const filteredProducts = products.filter((prod) => {
     const matchCategory =
       selectedCategory === 'Semua' || prod.category === selectedCategory;
+    const q = searchQuery.toLowerCase();
     const matchSearch =
-      prod.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prod.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (prod.description && prod.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      prod.name.toLowerCase().includes(q) ||
+      prod.sku.toLowerCase().includes(q) ||
+      (prod.barcode && prod.barcode.toLowerCase().includes(q)) ||
+      (prod.description && prod.description.toLowerCase().includes(q));
     return matchCategory && matchSearch;
   });
 
@@ -76,18 +138,93 @@ export const KasirScreen: React.FC = () => {
           })}
         </ScrollView>
 
-        {/* Search Input */}
+        {/* Scanner Input (Bluetooth HID Keyboard) */}
+        <View
+          style={[
+            styles.scannerWrapper,
+            isScannerFocused ? styles.scannerWrapperActive : styles.scannerWrapperIdle,
+          ]}
+        >
+          <BarcodeIcon size={18} color={isScannerFocused ? '#059669' : '#64748b'} />
+          <TextInput
+            ref={scannerInputRef}
+            value={scanValue}
+            onChangeText={setScanValue}
+            onSubmitEditing={handleBarcodeSubmit}
+            onFocus={() => setIsScannerFocused(true)}
+            onBlur={() => setIsScannerFocused(false)}
+            autoFocus
+            showSoftInputOnFocus={false}
+            blurOnSubmit={false}
+            returnKeyType="done"
+            placeholder="Scan barcode produk (HID Scanner) atau ketik + Enter..."
+            placeholderTextColor="#94a3b8"
+            style={styles.scannerInput}
+          />
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={focusScanner}
+            style={[
+              styles.scannerStatusPill,
+              isScannerFocused ? styles.scannerPillActive : styles.scannerPillIdle,
+            ]}
+          >
+            <View
+              style={[
+                styles.scannerDot,
+                { backgroundColor: isScannerFocused ? '#10b981' : '#94a3b8' },
+              ]}
+            />
+            <Text
+              style={[
+                styles.scannerStatusText,
+                isScannerFocused ? styles.scannerStatusTextActive : styles.scannerStatusTextIdle,
+              ]}
+            >
+              {isScannerFocused ? 'Scanner Siap' : 'Aktifkan Scan'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Search Input (Manual) */}
         <View style={styles.searchWrapper}>
           <SearchIcon size={16} color="#94a3b8" />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Cari nama atau SKU produk..."
+            placeholder="Cari manual nama, SKU, atau barcode..."
             placeholderTextColor="#94a3b8"
             style={styles.searchInput}
           />
         </View>
       </View>
+
+      {/* Toast Notification Banner */}
+      {toast && (
+        <View
+          style={[
+            styles.toastBanner,
+            toast.type === 'success'
+              ? styles.toastSuccess
+              : toast.type === 'warning'
+              ? styles.toastWarning
+              : styles.toastError,
+          ]}
+        >
+          <Text
+            style={[
+              styles.toastText,
+              toast.type === 'success'
+                ? styles.toastTextSuccess
+                : toast.type === 'warning'
+                ? styles.toastTextWarning
+                : styles.toastTextError,
+            ]}
+          >
+            {toast.message}
+          </Text>
+        </View>
+      )}
 
       {/* Product Grid Area */}
       <ScrollView contentContainerStyle={styles.gridContent}>
@@ -451,5 +588,91 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  scannerWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 42,
+    gap: 8,
+  },
+  scannerWrapperActive: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#10b981',
+  },
+  scannerWrapperIdle: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#cbd5e1',
+  },
+  scannerInput: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: 'monospace',
+    color: '#0f172a',
+    height: '100%',
+  },
+  scannerStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 5,
+  },
+  scannerPillActive: {
+    backgroundColor: '#d1fae5',
+  },
+  scannerPillIdle: {
+    backgroundColor: '#e2e8f0',
+  },
+  scannerDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  scannerStatusText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  scannerStatusTextActive: {
+    color: '#047857',
+  },
+  scannerStatusTextIdle: {
+    color: '#475569',
+  },
+  toastBanner: {
+    marginHorizontal: 12,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  toastSuccess: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#6ee7b7',
+  },
+  toastWarning: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#fcd34d',
+  },
+  toastError: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fca5a5',
+  },
+  toastText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  toastTextSuccess: {
+    color: '#065f46',
+  },
+  toastTextWarning: {
+    color: '#92400e',
+  },
+  toastTextError: {
+    color: '#991b1b',
   },
 });
