@@ -12,8 +12,9 @@ import {
 } from 'react-native';
 import { usePOS } from '../context/POSContext';
 import { Category, Product } from '../types';
-import { PlusIcon, EditIcon, TrashIcon, SearchIcon, CloseIcon } from '../components/Icons';
-import { formatRupiah, showPOSAlert } from '../utils/format';
+import { PlusIcon, EditIcon, TrashIcon, SearchIcon, CloseIcon, BarcodeIcon } from '../components/Icons';
+import { BarcodeView } from '../components/BarcodeView';
+import { formatRupiah, generateBarcodeNumber, showPOSAlert } from '../utils/format';
 
 const CATEGORIES: Category[] = ['Semua', 'Makanan', 'Minuman', 'Cemilan', 'Paket'];
 
@@ -26,12 +27,14 @@ export const ProdukScreen: React.FC = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [barcodeProduct, setBarcodeProduct] = useState<Product | null>(null);
 
   // Form Fields
   const [formName, setFormName] = useState<string>('');
   const [formCategory, setFormCategory] = useState<Category>('Makanan');
   const [formPrice, setFormPrice] = useState<number>(0);
   const [formStock, setFormStock] = useState<number>(10);
+  const [formBarcode, setFormBarcode] = useState<string>('');
   const [formDescription, setFormDescription] = useState<string>('');
 
   const openAddModal = () => {
@@ -40,6 +43,7 @@ export const ProdukScreen: React.FC = () => {
     setFormCategory('Makanan');
     setFormPrice(15000);
     setFormStock(20);
+    setFormBarcode(generateBarcodeNumber());
     setFormDescription('');
     setIsModalOpen(true);
   };
@@ -50,6 +54,7 @@ export const ProdukScreen: React.FC = () => {
     setFormCategory(p.category);
     setFormPrice(p.price);
     setFormStock(p.stock);
+    setFormBarcode(p.barcode || generateBarcodeNumber());
     setFormDescription(p.description || '');
     setIsModalOpen(true);
   };
@@ -64,12 +69,15 @@ export const ProdukScreen: React.FC = () => {
       return;
     }
 
+    const finalBarcode = formBarcode.trim() || generateBarcodeNumber();
+
     if (editingProduct) {
       updateProduct(editingProduct.id, {
         name: formName.trim(),
         category: formCategory,
         price: formPrice,
         stock: formStock,
+        barcode: finalBarcode,
         description: formDescription.trim(),
       });
     } else {
@@ -78,6 +86,7 @@ export const ProdukScreen: React.FC = () => {
         category: formCategory,
         price: formPrice,
         stock: formStock,
+        barcode: finalBarcode,
         description: formDescription.trim(),
       });
     }
@@ -123,7 +132,8 @@ export const ProdukScreen: React.FC = () => {
     const matchCat = selectedCategory === 'Semua' || p.category === selectedCategory;
     const matchSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase());
+      p.sku.toLowerCase().includes(search.toLowerCase()) ||
+      (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase()));
     return matchCat && matchSearch;
   });
 
@@ -194,6 +204,10 @@ export const ProdukScreen: React.FC = () => {
                 </View>
               </View>
               <Text style={styles.productName}>{p.name}</Text>
+              <View style={styles.barcodeChipRow}>
+                <BarcodeIcon size={13} color="#475569" />
+                <Text style={styles.barcodeChipText}>{p.barcode}</Text>
+              </View>
               {p.description ? (
                 <Text style={styles.productDesc} numberOfLines={1}>
                   {p.description}
@@ -228,6 +242,13 @@ export const ProdukScreen: React.FC = () => {
               </View>
 
               <View style={styles.actionRow}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setBarcodeProduct(p)}
+                  style={styles.actionBtn}
+                >
+                  <BarcodeIcon size={16} color="#0f172a" />
+                </TouchableOpacity>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => openEditModal(p)}
@@ -325,6 +346,26 @@ export const ProdukScreen: React.FC = () => {
               </View>
 
               <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Kode Barcode (Code128)</Text>
+                <View style={styles.barcodeInputRow}>
+                  <TextInput
+                    value={formBarcode}
+                    onChangeText={setFormBarcode}
+                    placeholder="Contoh: 8991002100018"
+                    placeholderTextColor="#94a3b8"
+                    style={[styles.formInput, { flex: 1, fontFamily: 'monospace' }]}
+                  />
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setFormBarcode(generateBarcodeNumber())}
+                    style={styles.autoBarcodeBtn}
+                  >
+                    <Text style={styles.autoBarcodeBtnText}>Auto</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>Deskripsi Singkat</Text>
                 <TextInput
                   value={formDescription}
@@ -352,6 +393,64 @@ export const ProdukScreen: React.FC = () => {
                 style={styles.modalBtnSave}
               >
                 <Text style={styles.modalBtnSaveText}>Simpan Produk</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Barcode Preview / Zoom / Print Modal */}
+      <Modal
+        visible={!!barcodeProduct}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBarcodeProduct(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.barcodeModalCard}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.modalTitle} numberOfLines={1}>
+                  {barcodeProduct?.name}
+                </Text>
+                <Text style={styles.barcodeModalSub}>
+                  {barcodeProduct?.sku} • {barcodeProduct ? formatRupiah(barcodeProduct.price) : ''}
+                </Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setBarcodeProduct(null)}>
+                <CloseIcon size={20} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.barcodePreviewArea}>
+              {barcodeProduct && (
+                <BarcodeView value={barcodeProduct.barcode} width={2.4} height={90} />
+              )}
+              <Text style={styles.barcodeHint}>
+                Arahkan Bluetooth Barcode Scanner langsung ke gambar garis di atas.
+              </Text>
+            </View>
+
+            <View style={styles.modalActions}>
+              {Platform.OS === 'web' && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    if (typeof window !== 'undefined' && window.print) {
+                      window.print();
+                    }
+                  }}
+                  style={styles.modalBtnSave}
+                >
+                  <Text style={styles.modalBtnSaveText}>Cetak Barcode</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setBarcodeProduct(null)}
+                style={styles.modalBtnCancel}
+              >
+                <Text style={styles.modalBtnCancelText}>Tutup</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -643,5 +742,61 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  barcodeChipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4,
+  },
+  barcodeChipText: {
+    fontSize: 11,
+    fontFamily: 'monospace',
+    color: '#475569',
+    fontWeight: '600',
+  },
+  barcodeInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  autoBarcodeBtn: {
+    backgroundColor: '#e2e8f0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  autoBarcodeBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  barcodeModalCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    width: '100%',
+    maxWidth: 420,
+    padding: 20,
+  },
+  barcodeModalSub: {
+    fontSize: 11,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  barcodePreviewArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 8,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  barcodeHint: {
+    fontSize: 11,
+    color: '#64748b',
+    textAlign: 'center',
+    marginTop: 12,
+    maxWidth: 280,
   },
 });

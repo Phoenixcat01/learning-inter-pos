@@ -26,6 +26,14 @@ export const generateInvoiceNumber = (count: number): string => {
   return `INV-${yyyy}${mm}${dd}-${num}`;
 };
 
+export const generateBarcodeNumber = (seed?: number): string => {
+  const randomPart =
+    typeof seed === 'number'
+      ? String(100000 + (seed % 900000)).padStart(6, '0')
+      : String(Math.floor(100000 + Math.random() * 900000));
+  return `8991002${randomPart}`;
+};
+
 export const showPOSAlert = (title: string, message?: string) => {
   if (Platform.OS === 'web') {
     if (typeof window !== 'undefined' && window.alert) {

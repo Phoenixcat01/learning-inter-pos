@@ -54,3 +54,7 @@ export const CloseIcon: React.FC<IconProps> = ({ size = 20, color = '#94a3b8', s
 export const EditIcon: React.FC<IconProps> = ({ size = 16, color = '#64748b', style }) => (
   <Feather name="edit-2" size={size} color={color} style={style} />
 );
+
+export const BarcodeIcon: React.FC<IconProps> = ({ size = 18, color = '#0f172a', style }) => (
+  <Ionicons name="barcode-outline" size={size} color={color} style={style} />
+);
