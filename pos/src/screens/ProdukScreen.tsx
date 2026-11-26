@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { usePOS } from '../context/POSContext';
 import { Category, Product } from '../types';
@@ -19,13 +20,22 @@ import { formatRupiah, generateBarcodeNumber, showPOSAlert } from '../utils/form
 const CATEGORIES: Category[] = ['Semua', 'Makanan', 'Minuman', 'Cemilan', 'Paket'];
 
 export const ProdukScreen: React.FC = () => {
-  const { products, addProduct, updateProduct, deleteProduct, resetProducts } = usePOS();
+  const {
+    products,
+    isLoadingProducts,
+    productsError,
+    reloadProducts,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+  } = usePOS();
 
   const [selectedCategory, setSelectedCategory] = useState<Category>('Semua');
   const [search, setSearch] = useState<string>('');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [barcodeProduct, setBarcodeProduct] = useState<Product | null>(null);
 
@@ -59,7 +69,7 @@ export const ProdukScreen: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formName.trim()) {
       showPOSAlert('Validasi', 'Nama produk tidak boleh kosong!');
       return;
@@ -70,62 +80,63 @@ export const ProdukScreen: React.FC = () => {
     }
 
     const finalBarcode = formBarcode.trim() || generateBarcodeNumber();
+    setIsSaving(true);
 
-    if (editingProduct) {
-      updateProduct(editingProduct.id, {
-        name: formName.trim(),
-        category: formCategory,
-        price: formPrice,
-        stock: formStock,
-        barcode: finalBarcode,
-        description: formDescription.trim(),
-      });
-    } else {
-      addProduct({
-        name: formName.trim(),
-        category: formCategory,
-        price: formPrice,
-        stock: formStock,
-        barcode: finalBarcode,
-        description: formDescription.trim(),
-      });
+    try {
+      if (editingProduct) {
+        await updateProduct(editingProduct.id, {
+          name: formName.trim(),
+          category: formCategory,
+          price: formPrice,
+          stock: formStock,
+          barcode: finalBarcode,
+          description: formDescription.trim(),
+        });
+      } else {
+        await addProduct({
+          name: formName.trim(),
+          category: formCategory,
+          price: formPrice,
+          stock: formStock,
+          barcode: finalBarcode,
+          description: formDescription.trim(),
+        });
+      }
+      setIsModalOpen(false);
+    } catch (err: any) {
+      showPOSAlert('Gagal Menyimpan', err.message || 'Terjadi kesalahan saat menyimpan produk.');
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsModalOpen(false);
   };
 
   const handleDelete = (p: Product) => {
+    const executeDelete = async () => {
+      try {
+        await deleteProduct(p.id);
+      } catch (err: any) {
+        showPOSAlert('Gagal Menghapus', err.message || 'Terjadi kesalahan saat menghapus produk.');
+      }
+    };
+
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined' && window.confirm) {
         if (window.confirm(`Hapus produk "${p.name}"?`)) {
-          deleteProduct(p.id);
+          executeDelete();
         }
       } else {
-        deleteProduct(p.id);
+        executeDelete();
       }
     } else {
       Alert.alert('Konfirmasi Hapus', `Apakah Anda yakin ingin menghapus "${p.name}"?`, [
         { text: 'Batal', style: 'cancel' },
-        { text: 'Hapus', style: 'destructive', onPress: () => deleteProduct(p.id) },
+        { text: 'Hapus', style: 'destructive', onPress: executeDelete },
       ]);
     }
   };
 
-  const handleReset = () => {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm) {
-        if (window.confirm('Kembalikan seluruh daftar produk ke data awal?')) {
-          resetProducts();
-        }
-      } else {
-        resetProducts();
-      }
-    } else {
-      Alert.alert('Reset Produk', 'Kembalikan seluruh daftar produk ke data bawaan?', [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Reset', style: 'destructive', onPress: resetProducts },
-      ]);
-    }
+  const handleRefresh = () => {
+    reloadProducts();
   };
 
   const filteredProducts = products.filter((p) => {
@@ -153,10 +164,10 @@ export const ProdukScreen: React.FC = () => {
 
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={handleReset}
+            onPress={handleRefresh}
             style={styles.resetBtn}
           >
-            <Text style={styles.resetBtnText}>Reset Default</Text>
+            <Text style={styles.resetBtnText}>Segarkan</Text>
           </TouchableOpacity>
         </View>
 
@@ -194,7 +205,33 @@ export const ProdukScreen: React.FC = () => {
 
       {/* Product List */}
       <ScrollView contentContainerStyle={styles.listContent}>
-        {filteredProducts.map((p) => (
+        {isLoadingProducts && products.length === 0 ? (
+          <View style={styles.centerStateContainer}>
+            <ActivityIndicator size="large" color="#059669" />
+            <Text style={styles.stateTitle}>Memuat Data Produk...</Text>
+            <Text style={styles.stateSubtitle}>Mengambil data dari Cloudflare D1</Text>
+          </View>
+        ) : productsError && products.length === 0 ? (
+          <View style={styles.centerStateContainer}>
+            <Text style={[styles.stateTitle, { color: '#ef4444' }]}>Gagal Memuat Produk</Text>
+            <Text style={styles.stateSubtitle}>{productsError}</Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={reloadProducts}
+              style={styles.retryBtn}
+            >
+              <Text style={styles.retryBtnText}>Coba Lagi</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filteredProducts.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyTitle}>Tidak ada produk ditemukan</Text>
+            <Text style={styles.emptySubtitle}>
+              Belum ada produk terdaftar atau tidak cocok dengan pencarian.
+            </Text>
+          </View>
+        ) : (
+          filteredProducts.map((p) => (
           <View key={p.id} style={styles.productCard}>
             <View style={styles.productCardLeft}>
               <View style={styles.skuRow}>
@@ -266,7 +303,7 @@ export const ProdukScreen: React.FC = () => {
               </View>
             </View>
           </View>
-        ))}
+        )))}
       </ScrollView>
 
       {/* Add / Edit Modal */}
@@ -390,9 +427,14 @@ export const ProdukScreen: React.FC = () => {
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={handleSave}
-                style={styles.modalBtnSave}
+                disabled={isSaving}
+                style={[styles.modalBtnSave, isSaving && { opacity: 0.7 }]}
               >
-                <Text style={styles.modalBtnSaveText}>Simpan Produk</Text>
+                {isSaving ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.modalBtnSaveText}>Simpan Produk</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -798,5 +840,51 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
     maxWidth: 280,
+  },
+  centerStateContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  stateTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginTop: 8,
+  },
+  stateSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    textAlign: 'center',
+    maxWidth: 320,
+  },
+  retryBtn: {
+    marginTop: 8,
+    backgroundColor: '#059669',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  retryBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  emptyContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: '#94a3b8',
+    marginTop: 4,
+    textAlign: 'center',
   },
 });

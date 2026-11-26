@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { Product, CartItem, Transaction, Category, TabType } from '../types';
-import { INITIAL_PRODUCTS } from '../data/initialProducts';
-import { generateInvoiceNumber, generateBarcodeNumber, showPOSAlert } from '../utils/format';
+import * as productService from '../services/productService';
+import * as transactionService from '../services/transactionService';
+import { generateBarcodeNumber, showPOSAlert } from '../utils/format';
 
 export interface ScanResult {
   success: boolean;
@@ -11,109 +12,100 @@ export interface ScanResult {
 
 interface POSContextType {
   products: Product[];
+  isLoadingProducts: boolean;
+  productsError: string | null;
+  reloadProducts: () => Promise<void>;
+
   cart: CartItem[];
+  cartTotalQty: number;
+  cartSubtotal: number;
+  cartTax: number;
+  cartGrandTotal: number;
+
   transactions: Transaction[];
+  isLoadingTransactions: boolean;
+  transactionsError: string | null;
+  reloadTransactions: () => Promise<void>;
+
   activeTab: TabType;
   selectedCategory: Category;
   searchQuery: string;
   setActiveTab: (tab: TabType) => void;
   setSelectedCategory: (cat: Category) => void;
   setSearchQuery: (query: string) => void;
+
   addToCart: (product: Product) => void;
   findProductByBarcode: (code: string) => Product | undefined;
   scanBarcodeToCart: (code: string) => ScanResult;
   updateCartQty: (productId: string, delta: number) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
+
   checkout: (details: {
     customerName?: string;
     paymentMethod: 'Cash' | 'QRIS' | 'Debit/Kredit';
     cashReceived?: number;
     discount?: number;
-  }) => Transaction;
-  addProduct: (product: Omit<Product, 'id' | 'sku' | 'barcode'> & { barcode?: string }) => void;
-  updateProduct: (id: string, updates: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
-  resetProducts: () => void;
-  cartTotalQty: number;
-  cartSubtotal: number;
-  cartTax: number;
-  cartGrandTotal: number;
+  }) => Promise<Transaction>;
+
+  addProduct: (product: Omit<Product, 'id' | 'sku' | 'barcode'> & { barcode?: string; sku?: string }) => Promise<void>;
+  updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
 }
 
 const POSContext = createContext<POSContextType | undefined>(undefined);
 
-const STORAGE_KEYS = {
-  PRODUCTS: 'pos_products_v1',
-  TRANSACTIONS: 'pos_transactions_v1',
-};
-
-const normalizeProducts = (list: Product[]): Product[] =>
-  list.map((p, idx) => {
-    if (p.barcode && p.barcode.trim()) return p;
-    const initial = INITIAL_PRODUCTS.find((item) => item.id === p.id);
-    return {
-      ...p,
-      barcode: initial?.barcode || generateBarcodeNumber(idx + 1),
-    };
-  });
-
 export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useState<Product[]>(() => {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const saved = window.localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-        if (saved) return normalizeProducts(JSON.parse(saved));
-      }
-    } catch (e) {
-      console.warn('Failed reading products from localStorage', e);
-    }
-    return INITIAL_PRODUCTS;
-  });
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
+
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState<boolean>(true);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
 
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const saved = window.localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-        if (saved) return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.warn('Failed reading transactions from localStorage', e);
-    }
-    return [];
-  });
-
   const [activeTab, setActiveTab] = useState<TabType>('kasir');
   const [selectedCategory, setSelectedCategory] = useState<Category>('Semua');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Persist products
-  useEffect(() => {
+  // 1. Load Products from API
+  const reloadProducts = useCallback(async () => {
+    setIsLoadingProducts(true);
+    setProductsError(null);
     try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
-      }
-    } catch (e) {
-      console.warn('Failed saving products to localStorage', e);
+      const data = await productService.getProducts();
+      setProducts(data);
+    } catch (err: any) {
+      setProductsError(err.message || 'Gagal memuat produk dari server.');
+    } finally {
+      setIsLoadingProducts(false);
     }
-  }, [products]);
+  }, []);
 
-  // Persist transactions
-  useEffect(() => {
+  // 2. Load Transactions from API
+  const reloadTransactions = useCallback(async () => {
+    setIsLoadingTransactions(true);
+    setTransactionsError(null);
     try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
-      }
-    } catch (e) {
-      console.warn('Failed saving transactions to localStorage', e);
+      const data = await transactionService.getTransactions();
+      setTransactions(data);
+    } catch (err: any) {
+      setTransactionsError(err.message || 'Gagal memuat riwayat transaksi dari server.');
+    } finally {
+      setIsLoadingTransactions(false);
     }
-  }, [transactions]);
+  }, []);
+
+  useEffect(() => {
+    reloadProducts();
+    reloadTransactions();
+  }, [reloadProducts, reloadTransactions]);
 
   // Cart operations
   const addToCart = (product: Product) => {
     if (product.stock <= 0) {
-      showPOSAlert('Stok Habis', 'Produk ini sedang tidak tersedia.');
+      showPOSAlert('Stok Habis', `Produk "${product.name}" sedang tidak tersedia.`);
       return;
     }
 
@@ -121,7 +113,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const existing = prevCart.find((item) => item.product.id === product.id);
       if (existing) {
         if (existing.quantity >= product.stock) {
-          showPOSAlert('Batas Stok', `Maksimal stok tercapai (${product.stock})`);
+          showPOSAlert('Batas Stok', `Maksimal stok tercapai untuk "${product.name}" (${product.stock} pcs).`);
           return prevCart;
         }
         return prevCart.map((item) =>
@@ -210,7 +202,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
 
       if (newQty > item.product.stock) {
-        showPOSAlert('Batas Stok', `Jumlah melebihi stok yang tersedia (${item.product.stock})`);
+        showPOSAlert('Batas Stok', `Jumlah melebihi stok yang tersedia (${item.product.stock} pcs)`);
         return prevCart;
       }
 
@@ -236,99 +228,84 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const cartTax = Math.round(cartSubtotal * 0.1); // PPN 10%
   const cartGrandTotal = cartSubtotal + cartTax;
 
-  // Checkout process
-  const checkout = (details: {
+  // Checkout process with backend API
+  const checkout = async (details: {
     customerName?: string;
     paymentMethod: 'Cash' | 'QRIS' | 'Debit/Kredit';
     cashReceived?: number;
     discount?: number;
-  }): Transaction => {
+  }): Promise<Transaction> => {
     const discount = details.discount || 0;
     const finalTotal = Math.max(0, cartGrandTotal - discount);
     const cashReceived = details.cashReceived || finalTotal;
     const change = Math.max(0, cashReceived - finalTotal);
 
-    const newTransaction: Transaction = {
-      id: `trx-${Date.now()}`,
-      invoiceNumber: generateInvoiceNumber(transactions.length),
-      date: new Date().toISOString(),
+    const payload = {
+      customerName: details.customerName?.trim() || 'Pelanggan Umum',
+      paymentMethod: details.paymentMethod,
+      cashReceived,
+      discount,
+      subtotal: cartSubtotal,
+      tax: cartTax,
+      total: finalTotal,
       items: cart.map((item) => ({
-        id: item.product.id,
+        productId: item.product.id,
         name: item.product.name,
         price: item.product.price,
         quantity: item.quantity,
         subtotal: item.subtotal,
       })),
-      subtotal: cartSubtotal,
-      tax: cartTax,
-      discount,
-      total: finalTotal,
-      paymentMethod: details.paymentMethod,
-      cashReceived,
-      change,
-      customerName: details.customerName?.trim() || 'Pelanggan Umum',
     };
 
-    // Reduce stock for purchased items
-    setProducts((prevProducts) =>
-      prevProducts.map((p) => {
-        const purchased = cart.find((c) => c.product.id === p.id);
-        if (purchased) {
-          return {
-            ...p,
-            stock: Math.max(0, p.stock - purchased.quantity),
-          };
-        }
-        return p;
-      })
-    );
+    // Save transaction to Cloudflare D1
+    const newTransaction = await transactionService.createTransaction(payload);
 
-    // Save transaction and clear cart
+    // Update transactions history and clear cart
     setTransactions((prev) => [newTransaction, ...prev]);
     setCart([]);
+
+    // Refresh products live to reflect reduced stock in D1
+    await reloadProducts();
 
     return newTransaction;
   };
 
-  // Product management
-  const addProduct = (newProd: Omit<Product, 'id' | 'sku' | 'barcode'> & { barcode?: string }) => {
-    const id = `prod-${Date.now()}`;
-    const skuCode =
-      newProd.category.substring(0, 3).toUpperCase() +
-      '-' +
-      Math.floor(100 + Math.random() * 900);
+  // Product management with backend API
+  const addProduct = async (newProd: Omit<Product, 'id' | 'sku' | 'barcode'> & { barcode?: string; sku?: string }) => {
     const barcodeCode = newProd.barcode?.trim() || generateBarcodeNumber();
+    const skuCode = newProd.sku || `${newProd.category.substring(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
 
-    const product: Product = {
+    await productService.createProduct({
       ...newProd,
-      id,
       sku: skuCode,
       barcode: barcodeCode,
-    };
-    setProducts((prev) => [product, ...prev]);
+    });
+    await reloadProducts();
   };
 
-  const updateProduct = (id: string, updates: Partial<Product>) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
-    );
+  const updateProduct = async (id: string, updates: Partial<Product>) => {
+    await productService.updateProduct(id, updates);
+    await reloadProducts();
   };
 
-  const deleteProduct = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+  const deleteProduct = async (id: string) => {
+    await productService.deleteProduct(id);
     setCart((prev) => prev.filter((item) => item.product.id !== id));
-  };
-
-  const resetProducts = () => {
-    setProducts(INITIAL_PRODUCTS);
+    await reloadProducts();
   };
 
   return (
     <POSContext.Provider
       value={{
         products,
+        isLoadingProducts,
+        productsError,
+        reloadProducts,
         cart,
         transactions,
+        isLoadingTransactions,
+        transactionsError,
+        reloadTransactions,
         activeTab,
         selectedCategory,
         searchQuery,
@@ -345,7 +322,6 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         addProduct,
         updateProduct,
         deleteProduct,
-        resetProducts,
         cartTotalQty,
         cartSubtotal,
         cartTax,

@@ -8,6 +8,8 @@ Skema database Hono D1 terdiri dari 5 tabel utama:
 3. `products`
 4. `transaction` (header transaksi penjualan)
 5. `transaction_items` (detail item barang per transaksi)
+untuk skema database yang lainnya tidak wajib.
+dan gunakan /api/endpoint untuk endpointnya. jadi disetiap endpoint didepannya harus ada /api/ . misal /api/product atau /api/transaction dll.
 
 ## Aturan Wajib untuk AI Agent
 1. **Cocokkan Skema & Endpoint Backend:** Periksa file skema SQL (`schema.sql`) dan file rute Hono (`products` dan `transaction` / `transactions`) di folder backend sebelum menulis service di Expo agar nama kolom (`id`, `name`, `price`, `stock`, `total_amount`, `payment_method`, `product_id`, `quantity`, `subtotal`, dll.) 100% identik.

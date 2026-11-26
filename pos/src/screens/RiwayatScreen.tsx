@@ -7,6 +7,7 @@ import {
   ScrollView,
   Modal,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { usePOS } from '../context/POSContext';
 import { Transaction } from '../types';
@@ -14,7 +15,13 @@ import { HistoryIcon, SearchIcon, CloseIcon } from '../components/Icons';
 import { formatRupiah, formatDateTime } from '../utils/format';
 
 export const RiwayatScreen: React.FC = () => {
-  const { transactions, setActiveTab } = usePOS();
+  const {
+    transactions,
+    isLoadingTransactions,
+    transactionsError,
+    reloadTransactions,
+    setActiveTab,
+  } = usePOS();
   const [search, setSearch] = useState<string>('');
   const [selectedTrx, setSelectedTrx] = useState<Transaction | null>(null);
 
@@ -73,7 +80,25 @@ export const RiwayatScreen: React.FC = () => {
 
       {/* Transactions List */}
       <ScrollView contentContainerStyle={styles.listContent}>
-        {filteredTransactions.length === 0 ? (
+        {isLoadingTransactions && transactions.length === 0 ? (
+          <View style={styles.centerStateContainer}>
+            <ActivityIndicator size="large" color="#059669" />
+            <Text style={styles.stateTitle}>Memuat Riwayat Transaksi...</Text>
+            <Text style={styles.stateSubtitle}>Mengambil data dari Cloudflare D1</Text>
+          </View>
+        ) : transactionsError && transactions.length === 0 ? (
+          <View style={styles.centerStateContainer}>
+            <Text style={[styles.stateTitle, { color: '#ef4444' }]}>Gagal Memuat Transaksi</Text>
+            <Text style={styles.stateSubtitle}>{transactionsError}</Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={reloadTransactions}
+              style={styles.retryBtn}
+            >
+              <Text style={styles.retryBtnText}>Coba Lagi</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filteredTransactions.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconCircle}>
               <HistoryIcon size={32} color="#94a3b8" />
@@ -487,5 +512,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#475569',
+  },
+  centerStateContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  stateTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginTop: 8,
+  },
+  stateSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    textAlign: 'center',
+    maxWidth: 320,
+  },
+  retryBtn: {
+    marginTop: 8,
+    backgroundColor: '#059669',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  retryBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });
