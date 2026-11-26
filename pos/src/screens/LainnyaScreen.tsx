@@ -1,8 +1,11 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { MoreIcon } from '../components/Icons';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { MoreIcon, LogoutIcon, UserIcon } from '../components/Icons';
+import { useAuth } from '../context/AuthContext';
 
 export const LainnyaScreen: React.FC = () => {
+  const { user, signOut } = useAuth();
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.centerBox}>
@@ -11,8 +14,35 @@ export const LainnyaScreen: React.FC = () => {
         </View>
         <Text style={styles.title}>Menu Lainnya</Text>
         <Text style={styles.subtitle}>
-          Menu ini disediakan sebagai placeholder modul tambahan untuk pengembangan sistem POS di masa mendatang.
+          Pengaturan akun kasir dan modul sistem POS tambahan.
         </Text>
+
+        {/* User Profile Card */}
+        {user && (
+          <View style={styles.userSection}>
+            <View style={styles.userCardHeader}>
+              <View style={styles.userIconWrapper}>
+                <UserIcon size={32} color="#059669" />
+              </View>
+              <View style={styles.userDetail}>
+                <Text style={styles.userName}>{user.nama}</Text>
+                <Text style={styles.userEmail}>{user.email}</Text>
+                <View style={styles.roleBadge}>
+                  <Text style={styles.roleText}>{user.role.toUpperCase()}</Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={signOut}
+              style={styles.logoutButton}
+            >
+              <LogoutIcon size={18} color="#ef4444" />
+              <Text style={styles.logoutButtonText}>Keluar dari Akun</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Feature Cards */}
         <View style={styles.grid}>
@@ -98,75 +128,139 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 24,
     backgroundColor: '#f1f5f9',
-    alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#0f172a',
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#64748b',
     textAlign: 'center',
-    marginTop: 6,
     lineHeight: 18,
+    marginBottom: 20,
+  },
+  userSection: {
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 20,
+    gap: 14,
+  },
+  userCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  userIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#ecfdf5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userDetail: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  userEmail: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  roleBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#ecfdf5',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  roleText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 8,
+  },
+  logoutButtonText: {
+    color: '#ef4444',
+    fontSize: 13,
+    fontWeight: '600',
   },
   grid: {
     width: '100%',
-    gap: 10,
-    marginTop: 20,
+    gap: 12,
+    marginBottom: 20,
   },
   card: {
     backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
   tag: {
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
     alignSelf: 'flex-start',
-    marginBottom: 6,
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginBottom: 8,
   },
   tagText: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#d97706',
+    color: '#64748b',
+    letterSpacing: 0.5,
   },
   cardTitle: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#0f172a',
+    marginBottom: 4,
   },
   cardDesc: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#64748b',
-    marginTop: 2,
-    lineHeight: 16,
+    lineHeight: 18,
   },
   infoBox: {
     width: '100%',
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: 14,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    marginTop: 16,
+    padding: 14,
     gap: 6,
   },
   infoTitle: {
     fontSize: 12,
     fontWeight: '700',
     color: '#334155',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   infoRow: {
     flexDirection: 'row',
@@ -178,7 +272,7 @@ const styles = StyleSheet.create({
   },
   infoVal: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#0f172a',
   },
 });

@@ -58,3 +58,27 @@ export const EditIcon: React.FC<IconProps> = ({ size = 16, color = '#64748b', st
 export const BarcodeIcon: React.FC<IconProps> = ({ size = 18, color = '#0f172a', style }) => (
   <Ionicons name="barcode-outline" size={size} color={color} style={style} />
 );
+
+export const LogoutIcon: React.FC<IconProps> = ({ size = 18, color = '#ef4444', style }) => (
+  <Ionicons name="log-out-outline" size={size} color={color} style={style} />
+);
+
+export const EyeIcon: React.FC<IconProps> = ({ size = 18, color = '#94a3b8', style }) => (
+  <Ionicons name="eye-outline" size={size} color={color} style={style} />
+);
+
+export const EyeOffIcon: React.FC<IconProps> = ({ size = 18, color = '#94a3b8', style }) => (
+  <Ionicons name="eye-off-outline" size={size} color={color} style={style} />
+);
+
+export const LockIcon: React.FC<IconProps> = ({ size = 18, color = '#94a3b8', style }) => (
+  <Ionicons name="lock-closed-outline" size={size} color={color} style={style} />
+);
+
+export const MailIcon: React.FC<IconProps> = ({ size = 18, color = '#94a3b8', style }) => (
+  <Ionicons name="mail-outline" size={size} color={color} style={style} />
+);
+
+export const UserIcon: React.FC<IconProps> = ({ size = 18, color = '#94a3b8', style }) => (
+  <Ionicons name="person-circle-outline" size={size} color={color} style={style} />
+);
