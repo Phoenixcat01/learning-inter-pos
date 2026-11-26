@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { usePOS } from '../context/POSContext';
+import { useAuth } from '../context/AuthContext';
 import { TabType } from '../types';
-import { CashierIcon, CartIcon, HistoryIcon, ProductIcon, MoreIcon } from './Icons';
+import { CashierIcon, CartIcon, HistoryIcon, ProductIcon, MoreIcon, LogoutIcon } from './Icons';
 
 interface NavItem {
   key: TabType;
@@ -13,6 +14,7 @@ interface NavItem {
 
 export const Sidebar: React.FC = () => {
   const { activeTab, setActiveTab, cartTotalQty, transactions } = usePOS();
+  const { user, signOut } = useAuth();
 
   const navItems: NavItem[] = [
     { key: 'kasir', label: 'Kasir', icon: CashierIcon },
@@ -72,8 +74,34 @@ export const Sidebar: React.FC = () => {
         </View>
       </View>
 
-      {/* Footer Info */}
+      {/* Footer Info & User Profile */}
       <View style={styles.footerContainer}>
+        {user && (
+          <View style={styles.userCard}>
+            <View style={styles.userAvatar}>
+              <Text style={styles.userAvatarText}>
+                {user.nama ? user.nama.charAt(0).toUpperCase() : 'U'}
+              </Text>
+            </View>
+            <View style={styles.userInfo}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {user.nama}
+              </Text>
+              <Text style={styles.userRole} numberOfLines={1}>
+                {user.role ? user.role.toUpperCase() : 'KASIR'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={signOut}
+              style={styles.logoutButton}
+              accessibilityLabel="Keluar / Logout"
+            >
+              <LogoutIcon size={18} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.footerCard}>
           <Text style={styles.footerTitle}>Point of Sale v1.0</Text>
           <Text style={styles.footerSubtitle}>Expo Go & Web Ready</Text>
@@ -179,6 +207,46 @@ const styles = StyleSheet.create({
     padding: 14,
     borderTopWidth: 1,
     borderTopColor: '#1e293b',
+    gap: 10,
+  },
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1e293b',
+    borderRadius: 12,
+    padding: 8,
+    gap: 8,
+  },
+  userAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#059669',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userAvatarText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    color: '#f8fafc',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  userRole: {
+    color: '#34d399',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  logoutButton: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
   footerCard: {
     backgroundColor: '#1e293b',

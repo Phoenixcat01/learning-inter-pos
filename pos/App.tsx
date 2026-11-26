@@ -6,14 +6,17 @@ import {
   StyleSheet,
   useWindowDimensions,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationBar } from 'expo-navigation-bar';
 import './tailwind.css';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { POSProvider, usePOS } from './src/context/POSContext';
 import { Sidebar } from './src/components/Sidebar';
 import { Header } from './src/components/Header';
+import { LoginScreen } from './src/screens/LoginScreen';
 import { KasirScreen } from './src/screens/KasirScreen';
 import { KeranjangScreen } from './src/screens/KeranjangScreen';
 import { RiwayatScreen } from './src/screens/RiwayatScreen';
@@ -126,17 +129,52 @@ function MainLayout() {
   );
 }
 
+function AppContent() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#10b981" />
+        <Text style={styles.loadingText}>Memuat Belajar POS...</Text>
+      </View>
+    );
+  }
+
+  if (!user) {
+    return <LoginScreen />;
+  }
+
+  return (
+    <POSProvider>
+      <MainLayout />
+    </POSProvider>
+  );
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
-      <POSProvider>
-        <MainLayout />
-      </POSProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    color: '#94a3b8',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   safeArea: {
     flex: 1,
     backgroundColor: '#0f172a', // warna slate-900 biar background status bar yg gelap nyambung ke header
