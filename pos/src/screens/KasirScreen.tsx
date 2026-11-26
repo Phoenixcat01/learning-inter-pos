@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { usePOS } from '../context/POSContext';
 import { Category } from '../types';
@@ -23,6 +24,9 @@ interface ToastState {
 export const KasirScreen: React.FC = () => {
   const {
     products,
+    isLoadingProducts,
+    productsError,
+    reloadProducts,
     cart,
     addToCart,
     scanBarcodeToCart,
@@ -228,7 +232,25 @@ export const KasirScreen: React.FC = () => {
 
       {/* Product Grid Area */}
       <ScrollView contentContainerStyle={styles.gridContent}>
-        {filteredProducts.length === 0 ? (
+        {isLoadingProducts && products.length === 0 ? (
+          <View style={styles.centerStateContainer}>
+            <ActivityIndicator size="large" color="#059669" />
+            <Text style={styles.stateTitle}>Memuat Katalog Produk...</Text>
+            <Text style={styles.stateSubtitle}>Mengambil data langsung dari backend Hono D1</Text>
+          </View>
+        ) : productsError && products.length === 0 ? (
+          <View style={styles.centerStateContainer}>
+            <Text style={[styles.stateTitle, { color: '#ef4444' }]}>Gagal Memuat Produk</Text>
+            <Text style={styles.stateSubtitle}>{productsError}</Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={reloadProducts}
+              style={styles.retryBtn}
+            >
+              <Text style={styles.retryBtnText}>Coba Lagi</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filteredProducts.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyTitle}>Tidak ada produk ditemukan</Text>
             <Text style={styles.emptySubtitle}>
@@ -674,5 +696,35 @@ const styles = StyleSheet.create({
   },
   toastTextError: {
     color: '#991b1b',
+  },
+  centerStateContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  stateTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginTop: 8,
+  },
+  stateSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    textAlign: 'center',
+    maxWidth: 320,
+  },
+  retryBtn: {
+    marginTop: 8,
+    backgroundColor: '#059669',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  retryBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

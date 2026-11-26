@@ -8,6 +8,7 @@ import {
   Modal,
   StyleSheet,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { usePOS } from '../context/POSContext';
 import { Transaction } from '../types';
@@ -37,6 +38,7 @@ export const KeranjangScreen: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'QRIS' | 'Debit/Kredit'>('Cash');
   const [cashGiven, setCashGiven] = useState<number>(0);
   const [completedTransaction, setCompletedTransaction] = useState<Transaction | null>(null);
+  const [isCheckingOut, setIsCheckingOut] = useState<boolean>(false);
 
   const discount = 0;
   const finalTotal = Math.max(0, cartGrandTotal - discount);
@@ -46,7 +48,7 @@ export const KeranjangScreen: React.FC = () => {
     setCashGiven(amount);
   };
 
-  const handleProcessCheckout = () => {
+  const handleProcessCheckout = async () => {
     if (cart.length === 0) {
       showPOSAlert('Keranjang Kosong', 'Tambahkan produk terlebih dahulu dari Kasir.');
       return;
@@ -57,16 +59,23 @@ export const KeranjangScreen: React.FC = () => {
       return;
     }
 
-    const trx = checkout({
-      customerName,
-      paymentMethod,
-      cashReceived: paymentMethod === 'Cash' ? cashGiven : finalTotal,
-      discount,
-    });
+    setIsCheckingOut(true);
+    try {
+      const trx = await checkout({
+        customerName,
+        paymentMethod,
+        cashReceived: paymentMethod === 'Cash' ? cashGiven : finalTotal,
+        discount,
+      });
 
-    setCompletedTransaction(trx);
-    setCashGiven(0);
-    setCustomerName('');
+      setCompletedTransaction(trx);
+      setCashGiven(0);
+      setCustomerName('');
+    } catch (err: any) {
+      showPOSAlert('Gagal Checkout', err.message || 'Terjadi kesalahan saat memproses transaksi di server.');
+    } finally {
+      setIsCheckingOut(false);
+    }
   };
 
   // Komponen Kartu Item Belanja
@@ -253,11 +262,17 @@ export const KeranjangScreen: React.FC = () => {
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={handleProcessCheckout}
-          disabled={cart.length === 0}
-          style={[styles.payBtn, cart.length === 0 && styles.payBtnDisabled]}
+          disabled={cart.length === 0 || isCheckingOut}
+          style={[styles.payBtn, (cart.length === 0 || isCheckingOut) && styles.payBtnDisabled]}
         >
-          <CheckIcon size={18} color="#ffffff" />
-          <Text style={styles.payBtnText}>Selesaikan Pembayaran</Text>
+          {isCheckingOut ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <CheckIcon size={18} color="#ffffff" />
+          )}
+          <Text style={styles.payBtnText}>
+            {isCheckingOut ? 'Memproses Transaksi...' : 'Selesaikan Pembayaran'}
+          </Text>
         </TouchableOpacity>
       </View>
     );
