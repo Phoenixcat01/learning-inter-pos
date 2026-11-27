@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "pos",
-    "slug": "pos",
+    "name": "Belajar POS",
+    "slug": "belajar-pos",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,7 +11,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0f172a",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -21,7 +21,14 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "name": "Belajar POS - Sistem Kasir",
+      "shortName": "Belajar POS",
+      "description": "Aplikasi Kasir Point of Sale Modern Hybrid Expo & Web PWA",
+      "themeColor": "#059669",
+      "backgroundColor": "#0f172a",
+      "display": "standalone",
+      "orientation": "any"
     }
   }
 }
